@@ -1,0 +1,137 @@
+<resources>
+    <string name="app_name">Bazar Hisab</string>
+    <string name="app_tagline">Household &amp; Grocery Expense Tracker</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_history">History</string>
+    <string name="nav_shopping">Shopping List</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- Home & Actions -->
+    <string name="add_expense">+ Add Expense</string>
+    <string name="scan_receipt">Scan Receipt</string>
+    <string name="scan_receipt_desc">Take a photo to extract items</string>
+    <string name="voice_entry">Voice Entry</string>
+    <string name="voice_entry_desc">Speak your expenses in Bengali or English</string>
+    <string name="shopping_list">Shopping List</string>
+    <string name="shopping_list_desc">Make list &amp; convert to expense</string>
+    <string name="manual_entry">Manual Entry</string>
+    <string name="manual_entry_desc">Type expense details directly</string>
+    <string name="how_to_add">How do you want to add expense?</string>
+
+    <!-- Home Overview -->
+    <string name="today_expense">Today\'s Expense</string>
+    <string name="this_month_expense">This Month</string>
+    <string name="today_breakdown">Today\'s Breakdown</string>
+    <string name="recent_expenses">Recent Expenses</string>
+    <string name="no_expenses_today">No expenses recorded today.</string>
+    <string name="no_expenses_yet">Tap + to record your first grocery expense!</string>
+    <string name="budget_card_title">Monthly Grocery Budget</string>
+    <string name="budget_used">%1$s / %2$s (%3$d%% used)</string>
+    <string name="budget_remaining">%s remaining</string>
+
+    <!-- Review / Reconciliation -->
+    <string name="reconciliation_title">Review &amp; Confirm</string>
+    <string name="ai_found">AI Extracted Items</string>
+    <string name="items_header">Items</string>
+    <string name="add_item">+ Add Item</string>
+    <string name="item_name">Item Name</string>
+    <string name="item_quantity">Qty</string>
+    <string name="item_unit">Unit</string>
+    <string name="item_amount">Amount (৳)</string>
+    <string name="item_category">Category</string>
+    <string name="calculated_total">Calculated Items Total</string>
+    <string name="receipt_total">Receipt Total</string>
+    <string name="total_mismatch_warning">⚠️ Item total (%1$s) does not match receipt total (%2$s). Please verify.</string>
+    <string name="merchant_shop">Shop / Store</string>
+    <string name="expense_date">Date</string>
+    <string name="payment_method">Payment Method</string>
+    <string name="cash">Cash</string>
+    <string name="bkash">bKash</string>
+    <string name="nagad">Nagad</string>
+    <string name="card">Card</string>
+    <string name="save_expense">Save Expense</string>
+    <string name="cancel">Cancel</string>
+    <string name="delete">Delete</string>
+    <string name="delete_confirm">Delete this expense record?</string>
+    <string name="edit">Edit</string>
+    <string name="duplicate_receipt_warning">⚠️ This receipt may already have been added on %s.</string>
+    <string name="view_existing">View Existing</string>
+    <string name="add_anyway">Add Anyway</string>
+    <string name="expense_saved">Expense saved successfully!</string>
+    <string name="low_confidence_hint">Check highlighted fields before saving.</string>
+
+    <!-- Categories -->
+    <string name="cat_groceries">Groceries</string>
+    <string name="cat_vegetables">Vegetables</string>
+    <string name="cat_fruits">Fruits</string>
+    <string name="cat_meat">Meat</string>
+    <string name="cat_fish">Fish</string>
+    <string name="cat_eggs">Eggs</string>
+    <string name="cat_rice_grains">Rice &amp; Grains</string>
+    <string name="cat_oil_spices">Oil &amp; Spices</string>
+    <string name="cat_household">Household</string>
+    <string name="cat_personal_care">Personal Care</string>
+    <string name="cat_food">Food &amp; Snacks</string>
+    <string name="cat_transport">Transport</string>
+    <string name="cat_medicine">Medicine</string>
+    <string name="cat_bills">Bills &amp; Utility</string>
+    <string name="cat_other">Other</string>
+
+    <!-- Voice Screen -->
+    <string name="voice_title">Voice Expense Entry</string>
+    <string name="voice_instruction">Press the microphone and speak naturally in Bengali or English.</string>
+    <string name="voice_examples_title">Examples you can say:</string>
+    <string name="voice_example_1">\"আজ আলু ৮০ টাকা, পেঁয়াজ ১০০ টাকা, ডিম ১৪০ টাকা কিনেছি\"</string>
+    <string name="voice_example_2">\"Today spent 1200 taka on groceries\"</string>
+    <string name="listening">Listening... speak now</string>
+    <string name="tap_to_speak">Tap to Speak</string>
+    <string name="tap_to_stop">Stop Listening</string>
+    <string name="speech_recognized">Recognized Speech:</string>
+    <string name="process_with_ai">Extract Expense Items</string>
+    <string name="mic_permission_needed">Microphone permission is required for voice input.</string>
+    <string name="camera_permission_needed">Camera permission is required to photograph receipts.</string>
+    <string name="or_pick_gallery">Or choose from Gallery</string>
+
+    <!-- Shopping List -->
+    <string name="shopping_title">Shopping List</string>
+    <string name="new_list_item">Add item (e.g. চাল ৫ কেজি ৪৫০)</string>
+    <string name="paste_list">Paste Raw Text</string>
+    <string name="paste_list_hint">Paste multiple lines (e.g. Rice 5kg 450 \n Potato 2kg 100)</string>
+    <string name="parse_list_button">Parse with AI</string>
+    <string name="convert_to_expense">Convert to Expense</string>
+    <string name="clear_completed">Clear Completed</string>
+    <string name="items_completed_count">%1$d of %2$d items checked</string>
+    <string name="no_shopping_items">Your shopping list is empty. Add items above!</string>
+
+    <!-- Manual Entry -->
+    <string name="manual_title">Manual Expense</string>
+    <string name="amount_label">Total Amount (৳)</string>
+    <string name="description_label">What did you buy? (e.g. Daily Grocery)</string>
+    <string name="more_details">More Details (Optional)</string>
+    <string name="notes_label">Notes</string>
+
+    <!-- History & Search -->
+    <string name="history_title">Expense History</string>
+    <string name="search_hint">Search items, shops, notes...</string>
+    <string name="filter_all">All</string>
+    <string name="filter_today">Today</string>
+    <string name="filter_week">This Week</string>
+    <string name="filter_month">This Month</string>
+    <string name="total_spent">Total: %s</string>
+    <string name="export_csv">Export to CSV</string>
+    <string name="monthly_summary_title">Monthly Category Breakdown</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="language_setting">Language / ভাষা</string>
+    <string name="household_name">Household / Mess Name</string>
+    <string name="default_household_name">Our Family</string>
+    <string name="monthly_budget_label">Monthly Grocery Budget (৳)</string>
+    <string name="about_bazar_hisab">About Bazar Hisab</string>
+    <string name="privacy_heading">Privacy &amp; Offline First</string>
+    <string name="privacy_body">All your expense records are stored locally on your device. Receipt images are processed securely for extraction and not retained without your choice.</string>
+    <string name="currency_bdt">Currency: Bangladeshi Taka (৳)</string>
+    <string name="ai_notice">AI extraction operates as a draft assistant. You always review and approve before saving.</string>
+</resources>

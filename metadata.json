@@ -1,0 +1,6 @@
+{
+  "name": "Bazar Hisab",
+  "description": "সহজ বাজার ও খরচের হিসাব খাতা। Smart Bangladeshi grocery and household expense tracker with receipt scanner, voice entry, and bazaar shopping list.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,137 @@
+<resources>
+    <string name="app_name">বাজার হিসাব</string>
+    <string name="app_tagline">সহজ পারিবারিক ও বাজারের খরচ খাতা</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">হিসাব</string>
+    <string name="nav_history">ইতিহাস</string>
+    <string name="nav_shopping">বাজারের ফর্দ</string>
+    <string name="nav_settings">সেটিংস</string>
+
+    <!-- Home & Actions -->
+    <string name="add_expense">+ খরচ যোগ করুন</string>
+    <string name="scan_receipt">রশিদের ছবি</string>
+    <string name="scan_receipt_desc">ছবি তুলে নিমেষেই হিসাব করুন</string>
+    <string name="voice_entry">মুখে বলে যোগ</string>
+    <string name="voice_entry_desc">বাংলায় কথা বলে খরচ লিখুন</string>
+    <string name="shopping_list">বাজারের ফর্দ</string>
+    <string name="shopping_list_desc">ফর্দ বানান ও খরচে রূপান্তর করুন</string>
+    <string name="manual_entry">হাতে লিখুন</string>
+    <string name="manual_entry_desc">নিজে সরাসরি খরচের তথ্য দিন</string>
+    <string name="how_to_add">কীভাবে খরচ যোগ করতে চান?</string>
+
+    <!-- Home Overview -->
+    <string name="today_expense">আজকের খরচ</string>
+    <string name="this_month_expense">এই মাসে</string>
+    <string name="today_breakdown">আজকের খরচের হিসাব</string>
+    <string name="recent_expenses">সর্বশেষ খরচসমূহ</string>
+    <string name="no_expenses_today">আজ এখনও কোনো খরচ যোগ করা হয়নি।</string>
+    <string name="no_expenses_yet">+ বাটনে চাপ দিয়ে প্রথম খরচ যোগ করুন!</string>
+    <string name="budget_card_title">মাসিক বাজারের বাজেট</string>
+    <string name="budget_used">%1$s / %2$s (%3$d%% খরচ হয়েছে)</string>
+    <string name="budget_remaining">%s বাকি আছে</string>
+
+    <!-- Review / Reconciliation -->
+    <string name="reconciliation_title">হিসাব মিলিয়ে নিন</string>
+    <string name="ai_found">AI যা খুঁজে পেয়েছে</string>
+    <string name="items_header">পণ্যের তালিকা</string>
+    <string name="add_item">+ নতুন পণ্য</string>
+    <string name="item_name">পণ্যের নাম</string>
+    <string name="item_quantity">পরিমাণ</string>
+    <string name="item_unit">একক</string>
+    <string name="item_amount">দাম (৳)</string>
+    <string name="item_category">বিভাগ</string>
+    <string name="calculated_total">হিসাবকৃত মোট খরচ</string>
+    <string name="receipt_total">রশিদের মোট টাকা</string>
+    <string name="total_mismatch_warning">⚠️ পণ্যের মোট (%1$s) এবং রশিদের মোট (%2$s) মিলছে না। অনুগ্রহ করে যাচাই করুন।</string>
+    <string name="merchant_shop">দোকান / বাজার</string>
+    <string name="expense_date">তারিখ</string>
+    <string name="payment_method">পরিশোধের মাধ্যম</string>
+    <string name="cash">নগদ</string>
+    <string name="bkash">বিকাশ</string>
+    <string name="nagad">নগদ (ডিজিটাল)</string>
+    <string name="card">কার্ড</string>
+    <string name="save_expense">খরচ সংরক্ষণ করুন</string>
+    <string name="cancel">বাতিল</string>
+    <string name="delete">মুছে ফেলুন</string>
+    <string name="delete_confirm">আপনি কি এই খরচের হিসাবটি মুছে ফেলতে চান?</string>
+    <string name="edit">সংশোধন</string>
+    <string name="duplicate_receipt_warning">⚠️ এই রশিদটি %s তারিখে আগেই যোগ করা হয়েছে মনে হচ্ছে।</string>
+    <string name="view_existing">আগেরটি দেখুন</string>
+    <string name="add_anyway">তবুও যোগ করুন</string>
+    <string name="expense_saved">খরচ সফলভাবে সংরক্ষিত হয়েছে!</string>
+    <string name="low_confidence_hint">সংরক্ষণের পূর্বে চিহ্নিত ক্ষেত্রগুলো যাচাই করে নিন।</string>
+
+    <!-- Categories -->
+    <string name="cat_groceries">মুদি ও বাজার</string>
+    <string name="cat_vegetables">শাক-সবজি</string>
+    <string name="cat_fruits">ফলমূল</string>
+    <string name="cat_meat">মাংস</string>
+    <string name="cat_fish">মাছ</string>
+    <string name="cat_eggs">ডিম</string>
+    <string name="cat_rice_grains">চাল ও ডাল</string>
+    <string name="cat_oil_spices">তেল ও মসলা</string>
+    <string name="cat_household">গৃহস্থালি সামগ্রী</string>
+    <string name="cat_personal_care">ব্যক্তিগত যত্ন</string>
+    <string name="cat_food">খাবার ও নাস্তা</string>
+    <string name="cat_transport">যাতায়াত</string>
+    <string name="cat_medicine">ওষুধ ও স্বাস্থ্য</string>
+    <string name="cat_bills">বিদ্যুৎ ও অন্যান্য বিল</string>
+    <string name="cat_other">অন্যান্য</string>
+
+    <!-- Voice Screen -->
+    <string name="voice_title">কথা বলে খরচ যোগ</string>
+    <string name="voice_instruction">মাইক্রোফোন আইকনে চাপ দিয়ে স্বাভাবিকভাবে মুখে বলুন।</string>
+    <string name="voice_examples_title">যেভাবে বলতে পারেন:</string>
+    <string name="voice_example_1">\"আজ আলু ৮০ টাকা, পেঁয়াজ ১০০ টাকা, ডিম ১৪০ টাকা কিনেছি\"</string>
+    <string name="voice_example_2">\"মুদি দোকান থেকে চাল ৬৫০ আর তেল ১৯০ টাকা\"</string>
+    <string name="listening">শুনছি... কথা বলুন</string>
+    <string name="tap_to_speak">কথা বলতে চাপুন</string>
+    <string name="tap_to_stop">কথা শেষ হলে চাপুন</string>
+    <string name="speech_recognized">যা শোনা গেছে:</string>
+    <string name="process_with_ai">খরচের ফর্দ তৈরি করুন</string>
+    <string name="mic_permission_needed">কথা রেকর্ড করার জন্য মাইক্রোফোন অনুমতি প্রয়োজন।</string>
+    <string name="camera_permission_needed">রশিদের ছবি তোলার জন্য ক্যামেরার অনুমতি প্রয়োজন।</string>
+    <string name="or_pick_gallery">অথবা গ্যালারি থেকে ছবি বেছে নিন</string>
+
+    <!-- Shopping List -->
+    <string name="shopping_title">বাজারের ফর্দ</string>
+    <string name="new_list_item">পণ্য লিখুন (যেমন: চাল ৫ কেজি ৪৫০)</string>
+    <string name="paste_list">একসাথে পেস্ট করুন</string>
+    <string name="paste_list_hint">একাধিক লাইন পেস্ট করুন (যেমন:\nচাল ৫ কেজি ৪৫০\nআলু ২ কেজি ১০০)</string>
+    <string name="parse_list_button">AI দিয়ে ফর্দ সাজান</string>
+    <string name="convert_to_expense">খরচে রূপান্তর করুন</string>
+    <string name="clear_completed">কেনা তালিকা মুছুন</string>
+    <string name="items_completed_count">%2$d টির মধ্যে %1$d টি কেনা শেষ</string>
+    <string name="no_shopping_items">বাজারের ফর্দ খালি আছে। উপরের ঘরে নতুন পণ্য যোগ করুন!</string>
+
+    <!-- Manual Entry -->
+    <string name="manual_title">হাতে লিখে খরচ</string>
+    <string name="amount_label">মোট টাকার অঙ্ক (৳)</string>
+    <string name="description_label">কিসের বাজার বা খরচ? (যেমন: দৈনিক বাজার)</string>
+    <string name="more_details">অন্যান্য তথ্য (ঐচ্ছিক)</string>
+    <string name="notes_label">মন্তব্য / নোট</string>
+
+    <!-- History & Search -->
+    <string name="history_title">খরচের ইতিহাস</string>
+    <string name="search_hint">পণ্য, দোকান বা নোট দিয়ে খুঁজুন...</string>
+    <string name="filter_all">সব</string>
+    <string name="filter_today">আজ</string>
+    <string name="filter_week">এই সপ্তাহ</string>
+    <string name="filter_month">এই মাস</string>
+    <string name="total_spent">মোট খরচ: %s</string>
+    <string name="export_csv">CSV ফাইলে এক্সপোর্ট</string>
+    <string name="monthly_summary_title">মাসিক খরচের খাতওয়ারি বিবরণ</string>
+
+    <!-- Settings -->
+    <string name="settings_title">সেটিংস</string>
+    <string name="language_setting">ভাষা / Language</string>
+    <string name="household_name">পরিবার বা মেসের নাম</string>
+    <string name="default_household_name">আমার পরিবার</string>
+    <string name="monthly_budget_label">মাসিক বাজারের বাজেট (৳)</string>
+    <string name="about_bazar_hisab">বাজার হিসাব সম্পর্কে</string>
+    <string name="privacy_heading">সম্পূর্ণ নিরাপদ ও অফলাইন</string>
+    <string name="privacy_body">আপনার খরচের সকল তথ্য আপনার ফোনেই সংরক্ষিত থাকে। ইন্টারনেট ছাড়াও সাধারণ খরচ লেখা ও দেখা যায়।</string>
+    <string name="currency_bdt">মুদ্রা: বাংলাদেশী টাকা (৳)</string>
+    <string name="ai_notice">কৃত্রিম বুদ্ধিমত্তা (AI) শুধুমাত্র প্রাথমিক ড্রাফট তৈরি করে। চূড়ান্তভাবে সংরক্ষণের দায়িত্ব আপনার।</string>
+</resources>
