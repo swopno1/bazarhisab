@@ -299,6 +299,9 @@ fun SettingsScreen(
                     )
                 }
             }
+
+            // Google AdMob Test Banner
+            com.example.ads.AdmobBanner(isBengali = isBengali)
         }
     }
 }

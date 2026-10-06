@@ -303,6 +303,11 @@ fun HistoryScreen(
                 }
             }
 
+            // Google AdMob Test Banner
+            item {
+                com.example.ads.AdmobBanner(isBengali = isBengali)
+            }
+
             // Expenses List
             if (displayExpenses.isEmpty()) {
                 item {

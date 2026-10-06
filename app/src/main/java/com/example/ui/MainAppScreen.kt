@@ -72,6 +72,7 @@ fun MainAppScreen(
     var previousScreen by remember { mutableStateOf(Screen.HOME) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     ProvideLocalizedContext(language = language) {
         val isBottomBarVisible = currentScreen in listOf(Screen.HOME, Screen.HISTORY, Screen.SHOPPING, Screen.SETTINGS)
@@ -264,6 +265,10 @@ fun MainAppScreen(
                             val message = if (isBengali) "খরচ সফলভাবে সংরক্ষিত হয়েছে!" else "Expense saved successfully!"
                             scope.launch {
                                 snackbarHostState.showSnackbar(message)
+                            }
+                            val activity = context as? android.app.Activity
+                            if (activity != null) {
+                                com.example.ads.AdManager.showInterstitialIfReady(activity)
                             }
                         }
                     )

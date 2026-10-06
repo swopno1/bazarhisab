@@ -316,6 +316,11 @@ fun HomeScreen(
             }
         }
 
+        // Google AdMob Test Banner
+        item {
+            com.example.ads.AdmobBanner(isBengali = isBengali)
+        }
+
         // Recent Expenses Section
         item {
             Row(
