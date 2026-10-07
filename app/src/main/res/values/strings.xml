@@ -9,7 +9,7 @@
     <string name="nav_settings">Settings</string>
 
     <!-- Home & Actions -->
-    <string name="add_expense">+ Add Expense</string>
+    <string name="add_expense">Add Expense</string>
     <string name="scan_receipt">Scan Receipt</string>
     <string name="scan_receipt_desc">Take a photo to extract items</string>
     <string name="voice_entry">Voice Entry</string>

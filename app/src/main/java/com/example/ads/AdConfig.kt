@@ -19,14 +19,9 @@ object AdConfig {
 
     /**
      * Production Ad Unit IDs:
-     * When you are ready for production release, replace these with your actual IDs
-     * from your Google AdMob dashboard:
-     * 1. Go to apps.admob.com -> Apps -> Add App / App Settings
-     * 2. Replace APPLICATION_ID in AndroidManifest.xml with your App ID (ca-app-pub-XXXXX~XXXXX)
-     * 3. Set your production Banner & Interstitial IDs here.
      */
-    var bannerAdUnitId: String = BANNER_TEST_AD_UNIT_ID
-    var interstitialAdUnitId: String = INTERSTITIAL_TEST_AD_UNIT_ID
+    var bannerAdUnitId: String = "ca-app-pub-5222053984568989/8503913140"
+    var interstitialAdUnitId: String = "ca-app-pub-5222053984568989/8064929448"
 
     // Enable/disable ads globally (useful if user purchases ad-free or in testing)
     var adsEnabled: Boolean = true

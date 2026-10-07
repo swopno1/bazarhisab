@@ -9,7 +9,7 @@
     <string name="nav_settings">সেটিংস</string>
 
     <!-- Home & Actions -->
-    <string name="add_expense">+ খরচ যোগ করুন</string>
+    <string name="add_expense">খরচ যোগ করুন</string>
     <string name="scan_receipt">রশিদের ছবি</string>
     <string name="scan_receipt_desc">ছবি তুলে নিমেষেই হিসাব করুন</string>
     <string name="voice_entry">মুখে বলে যোগ</string>
