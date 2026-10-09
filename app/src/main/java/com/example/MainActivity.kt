@@ -2,11 +2,13 @@ package com.example
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.LocalActivityResultRegistryOwner
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import com.example.ui.ExpenseViewModel
 import com.example.ui.MainAppScreen
@@ -21,9 +23,13 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         com.example.ads.AdManager.initialize(this)
         setContent {
-            MyApplicationTheme {
-                Surface(modifier = Modifier.fillMaxSize()) {
-                    MainAppScreen(viewModel = viewModel)
+            CompositionLocalProvider(
+                LocalActivityResultRegistryOwner provides this
+            ) {
+                MyApplicationTheme {
+                    Surface(modifier = Modifier.fillMaxSize()) {
+                        MainAppScreen(viewModel = viewModel)
+                    }
                 }
             }
         }

@@ -6,6 +6,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -80,6 +81,8 @@ fun ReceiptScanScreen(
     onNavigateToReconciliation: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    BackHandler { onNavigateBack() }
+
     val context = LocalContext.current
     val isAiProcessing by viewModel.isAiProcessing.collectAsState()
     val settings by viewModel.settings.collectAsState()
