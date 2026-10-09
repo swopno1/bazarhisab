@@ -2,6 +2,7 @@ package com.example.ui.history
 
 import android.content.Intent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,22 +16,27 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -58,7 +64,6 @@ import com.example.ai.BengaliNumberUtils
 import com.example.data.model.ExpenseCategories
 import com.example.data.model.ExpenseWithItems
 import com.example.ui.ExpenseViewModel
-import com.example.ui.components.CategoryBadge
 import com.example.ui.components.CurrencyText
 import com.example.ui.home.ExpenseDetailBottomSheet
 import com.example.ui.home.ExpenseListItemCard
@@ -66,6 +71,14 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+
+enum class HistoryFilterPeriod {
+    ALL,
+    DAY,
+    WEEK,
+    MONTH,
+    YEAR
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -80,46 +93,174 @@ fun HistoryScreen(
     val settings by viewModel.settings.collectAsState()
     val isBengali = settings?.language != "en"
 
-    var selectedFilter by remember { mutableStateOf("all") } // all, today, week, month
+    val monthLabel = if (isBengali) "মাস (Month)" else stringResource(R.string.filter_month)
+    val weekLabel = if (isBengali) "সপ্তাহ (Week)" else stringResource(R.string.filter_week)
+    val dayLabel = if (isBengali) "দিন (Day)" else stringResource(R.string.filter_today)
+    val yearLabel = if (isBengali) "বছর (Year)" else stringResource(R.string.filter_year)
+    val allLabel = if (isBengali) "সব (All)" else stringResource(R.string.filter_all)
+
+    var selectedPeriod by remember { mutableStateOf(HistoryFilterPeriod.MONTH) }
+    var periodOffset by remember { mutableStateOf(0) } // 0 = current, -1 = previous, etc.
     var selectedExpenseDetail by remember { mutableStateOf<ExpenseWithItems?>(null) }
 
-    // Filter computation
-    val now = Calendar.getInstance()
-    val startOfToday = remember {
-        Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }.timeInMillis
-    }
-    val startOfWeek = remember {
-        Calendar.getInstance().apply {
-            set(Calendar.DAY_OF_WEEK, firstDayOfWeek)
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }.timeInMillis
-    }
-    val startOfMonth = remember {
-        Calendar.getInstance().apply {
-            set(Calendar.DAY_OF_MONTH, 1)
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }.timeInMillis
+    // Calculate time range for the current filter and offset
+    val periodTimeRange = remember(selectedPeriod, periodOffset) {
+        val cal = Calendar.getInstance()
+        when (selectedPeriod) {
+            HistoryFilterPeriod.ALL -> {
+                0L to Long.MAX_VALUE
+            }
+            HistoryFilterPeriod.DAY -> {
+                cal.add(Calendar.DAY_OF_YEAR, periodOffset)
+                cal.set(Calendar.HOUR_OF_DAY, 0)
+                cal.set(Calendar.MINUTE, 0)
+                cal.set(Calendar.SECOND, 0)
+                cal.set(Calendar.MILLISECOND, 0)
+                val start = cal.timeInMillis
+
+                cal.set(Calendar.HOUR_OF_DAY, 23)
+                cal.set(Calendar.MINUTE, 59)
+                cal.set(Calendar.SECOND, 59)
+                cal.set(Calendar.MILLISECOND, 999)
+                val end = cal.timeInMillis
+                start to end
+            }
+            HistoryFilterPeriod.WEEK -> {
+                cal.add(Calendar.WEEK_OF_YEAR, periodOffset)
+                cal.set(Calendar.DAY_OF_WEEK, cal.firstDayOfWeek)
+                cal.set(Calendar.HOUR_OF_DAY, 0)
+                cal.set(Calendar.MINUTE, 0)
+                cal.set(Calendar.SECOND, 0)
+                cal.set(Calendar.MILLISECOND, 0)
+                val start = cal.timeInMillis
+
+                cal.add(Calendar.DAY_OF_WEEK, 6)
+                cal.set(Calendar.HOUR_OF_DAY, 23)
+                cal.set(Calendar.MINUTE, 59)
+                cal.set(Calendar.SECOND, 59)
+                cal.set(Calendar.MILLISECOND, 999)
+                val end = cal.timeInMillis
+                start to end
+            }
+            HistoryFilterPeriod.MONTH -> {
+                cal.add(Calendar.MONTH, periodOffset)
+                cal.set(Calendar.DAY_OF_MONTH, 1)
+                cal.set(Calendar.HOUR_OF_DAY, 0)
+                cal.set(Calendar.MINUTE, 0)
+                cal.set(Calendar.SECOND, 0)
+                cal.set(Calendar.MILLISECOND, 0)
+                val start = cal.timeInMillis
+
+                val maxDay = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
+                cal.set(Calendar.DAY_OF_MONTH, maxDay)
+                cal.set(Calendar.HOUR_OF_DAY, 23)
+                cal.set(Calendar.MINUTE, 59)
+                cal.set(Calendar.SECOND, 59)
+                cal.set(Calendar.MILLISECOND, 999)
+                val end = cal.timeInMillis
+                start to end
+            }
+            HistoryFilterPeriod.YEAR -> {
+                cal.add(Calendar.YEAR, periodOffset)
+                cal.set(Calendar.DAY_OF_YEAR, 1)
+                cal.set(Calendar.HOUR_OF_DAY, 0)
+                cal.set(Calendar.MINUTE, 0)
+                cal.set(Calendar.SECOND, 0)
+                cal.set(Calendar.MILLISECOND, 0)
+                val start = cal.timeInMillis
+
+                cal.set(Calendar.MONTH, Calendar.DECEMBER)
+                cal.set(Calendar.DAY_OF_MONTH, 31)
+                cal.set(Calendar.HOUR_OF_DAY, 23)
+                cal.set(Calendar.MINUTE, 59)
+                cal.set(Calendar.SECOND, 59)
+                cal.set(Calendar.MILLISECOND, 999)
+                val end = cal.timeInMillis
+                start to end
+            }
+        }
     }
 
-    val displayExpenses = remember(searchQuery, searchResults, allExpenses, selectedFilter) {
-        val baseList = if (searchQuery.isNotBlank()) searchResults else allExpenses
-        when (selectedFilter) {
-            "today" -> baseList.filter { it.expense.date >= startOfToday }
-            "week" -> baseList.filter { it.expense.date >= startOfWeek }
-            "month" -> baseList.filter { it.expense.date >= startOfMonth }
-            else -> baseList
+    // Friendly Period Header Text
+    val periodHeaderText = remember(selectedPeriod, periodOffset, isBengali) {
+        val cal = Calendar.getInstance()
+        val bengaliMonths = listOf(
+            "জানুয়ারি", "ফেব্রুয়ারি", "মার্চ", "এপ্রিল", "মে", "জুন",
+            "জুলাই", "আগস্ট", "সেপ্টেম্বর", "অক্টোবর", "নভেম্বর", "ডিসেম্বর"
+        )
+        when (selectedPeriod) {
+            HistoryFilterPeriod.ALL -> {
+                if (isBengali) "সব সময়ের হিসাব" else "All Time Expenses"
+            }
+            HistoryFilterPeriod.DAY -> {
+                cal.add(Calendar.DAY_OF_YEAR, periodOffset)
+                if (periodOffset == 0) {
+                    val dayStr = SimpleDateFormat("dd MMM yyyy", Locale.US).format(cal.time)
+                    if (isBengali) "আজ (${BengaliNumberUtils.toBengaliDigits(cal.get(Calendar.DAY_OF_MONTH).toString())} ${bengaliMonths[cal.get(Calendar.MONTH)]} ${BengaliNumberUtils.toBengaliDigits(cal.get(Calendar.YEAR).toString())})"
+                    else "Today ($dayStr)"
+                } else if (periodOffset == -1) {
+                    val dayStr = SimpleDateFormat("dd MMM yyyy", Locale.US).format(cal.time)
+                    if (isBengali) "গতকাল (${BengaliNumberUtils.toBengaliDigits(cal.get(Calendar.DAY_OF_MONTH).toString())} ${bengaliMonths[cal.get(Calendar.MONTH)]})"
+                    else "Yesterday ($dayStr)"
+                } else {
+                    if (isBengali) {
+                        "${BengaliNumberUtils.toBengaliDigits(cal.get(Calendar.DAY_OF_MONTH).toString())} ${bengaliMonths[cal.get(Calendar.MONTH)]} ${BengaliNumberUtils.toBengaliDigits(cal.get(Calendar.YEAR).toString())}"
+                    } else {
+                        SimpleDateFormat("EEE, dd MMM yyyy", Locale.US).format(cal.time)
+                    }
+                }
+            }
+            HistoryFilterPeriod.WEEK -> {
+                cal.add(Calendar.WEEK_OF_YEAR, periodOffset)
+                cal.set(Calendar.DAY_OF_WEEK, cal.firstDayOfWeek)
+                val startDay = cal.get(Calendar.DAY_OF_MONTH)
+                val startMonth = cal.get(Calendar.MONTH)
+                cal.add(Calendar.DAY_OF_WEEK, 6)
+                val endDay = cal.get(Calendar.DAY_OF_MONTH)
+                val endMonth = cal.get(Calendar.MONTH)
+                val year = cal.get(Calendar.YEAR)
+
+                if (isBengali) {
+                    if (periodOffset == 0) {
+                        "চলতি সপ্তাহ (${BengaliNumberUtils.toBengaliDigits(startDay.toString())} ${bengaliMonths[startMonth]} - ${BengaliNumberUtils.toBengaliDigits(endDay.toString())} ${bengaliMonths[endMonth]})"
+                    } else {
+                        "${BengaliNumberUtils.toBengaliDigits(startDay.toString())} ${bengaliMonths[startMonth]} - ${BengaliNumberUtils.toBengaliDigits(endDay.toString())} ${bengaliMonths[endMonth]} ${BengaliNumberUtils.toBengaliDigits(year.toString())}"
+                    }
+                } else {
+                    if (periodOffset == 0) {
+                        "This Week (${startDay} ${SimpleDateFormat("MMM", Locale.US).format(cal.time)} - ${endDay} ${SimpleDateFormat("MMM", Locale.US).format(cal.time)})"
+                    } else {
+                        "Week: $startDay - $endDay ${SimpleDateFormat("MMM yyyy", Locale.US).format(cal.time)}"
+                    }
+                }
+            }
+            HistoryFilterPeriod.MONTH -> {
+                cal.add(Calendar.MONTH, periodOffset)
+                val mIndex = cal.get(Calendar.MONTH)
+                val year = cal.get(Calendar.YEAR)
+                if (isBengali) {
+                    "${bengaliMonths[mIndex]} ${BengaliNumberUtils.toBengaliDigits(year.toString())}"
+                } else {
+                    SimpleDateFormat("MMMM yyyy", Locale.US).format(cal.time)
+                }
+            }
+            HistoryFilterPeriod.YEAR -> {
+                cal.add(Calendar.YEAR, periodOffset)
+                val year = cal.get(Calendar.YEAR)
+                if (isBengali) {
+                    "${BengaliNumberUtils.toBengaliDigits(year.toString())} সাল"
+                } else {
+                    year.toString()
+                }
+            }
         }
+    }
+
+    // Filter display list
+    val displayExpenses = remember(searchQuery, searchResults, allExpenses, periodTimeRange) {
+        val (startTime, endTime) = periodTimeRange
+        val baseList = if (searchQuery.isNotBlank()) searchResults else allExpenses
+        baseList.filter { it.expense.date in startTime..endTime }
     }
 
     val totalSpent = remember(displayExpenses) {
@@ -145,12 +286,13 @@ fun HistoryScreen(
                     )
                 },
                 actions = {
+                    // Export CSV for current filtered period
                     IconButton(
                         onClick = {
-                            val csvData = viewModel.getCsvData()
+                            val csvData = generateCsvForExpenses(displayExpenses)
                             val sendIntent = Intent(Intent.ACTION_SEND).apply {
                                 type = "text/csv"
-                                putExtra(Intent.EXTRA_SUBJECT, "Bazar Hisab Expenses")
+                                putExtra(Intent.EXTRA_SUBJECT, "Bazar Hisab - $periodHeaderText")
                                 putExtra(Intent.EXTRA_TEXT, csvData)
                             }
                             context.startActivity(Intent.createChooser(sendIntent, "Export Expenses"))
@@ -195,28 +337,119 @@ fun HistoryScreen(
                 )
             }
 
-            // Filter Chips
+            // Period Filter Tabs (Month, Week, Day, Year, All)
             item {
-                Row(
+                LazyRow(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    listOf(
-                        "all" to stringResource(R.string.filter_all),
-                        "today" to stringResource(R.string.filter_today),
-                        "week" to stringResource(R.string.filter_week),
-                        "month" to stringResource(R.string.filter_month)
-                    ).forEach { (key, label) ->
+                    val periods = listOf(
+                        HistoryFilterPeriod.MONTH to monthLabel,
+                        HistoryFilterPeriod.WEEK to weekLabel,
+                        HistoryFilterPeriod.DAY to dayLabel,
+                        HistoryFilterPeriod.YEAR to yearLabel,
+                        HistoryFilterPeriod.ALL to allLabel
+                    )
+
+                    items(periods) { (period, label) ->
+                        val isSelected = selectedPeriod == period
                         FilterChip(
-                            selected = selectedFilter == key,
-                            onClick = { selectedFilter = key },
-                            label = { Text(label, fontSize = 12.sp) }
+                            selected = isSelected,
+                            onClick = {
+                                selectedPeriod = period
+                                periodOffset = 0 // reset offset to current when changing mode
+                            },
+                            label = { Text(label, fontSize = 12.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
                         )
                     }
                 }
             }
 
-            // Total Spent in Filter Card
+            // Interactive Period Navigator Card (when not ALL)
+            if (selectedPeriod != HistoryFilterPeriod.ALL) {
+                item {
+                    Card(
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp, vertical = 6.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(
+                                onClick = { periodOffset -= 1 },
+                                modifier = Modifier.size(40.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = "Previous Period",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable {
+                                        // Tap to reset to current period
+                                        periodOffset = 0
+                                    }
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.CalendarMonth,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = periodHeaderText,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 15.sp,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                                if (periodOffset != 0) {
+                                    Text(
+                                        text = if (isBengali) "চলতি সময়ে ফিরতে চাপুন" else "Tap to return to current",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontSize = 11.sp
+                                    )
+                                }
+                            }
+
+                            IconButton(
+                                onClick = { periodOffset += 1 },
+                                modifier = Modifier.size(40.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                    contentDescription = "Next Period",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Total Spent & Count in Selected Period Card
             item {
                 Card(
                     shape = RoundedCornerShape(18.dp),
@@ -231,12 +464,25 @@ fun HistoryScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = stringResource(R.string.total_spent, ""),
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 15.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Column {
+                            Text(
+                                text = if (isBengali) "এই সময়ের মোট খরচ" else "Total Spent",
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            val countStr = if (isBengali)
+                                "${BengaliNumberUtils.toBengaliDigits(displayExpenses.size.toString())}টি খরচ"
+                            else
+                                "${displayExpenses.size} items"
+                            Text(
+                                text = countStr,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.outline
+                            )
+                        }
+
                         CurrencyText(
                             amount = totalSpent,
                             isBengali = isBengali,
@@ -248,7 +494,7 @@ fun HistoryScreen(
                 }
             }
 
-            // Category Breakdown Progress Bars (Section 25)
+            // Category Breakdown Progress Bars for Selected Period
             if (categoryTotals.isNotEmpty()) {
                 item {
                     Card(
@@ -308,20 +554,40 @@ fun HistoryScreen(
                 com.example.ads.AdmobBanner(isBengali = isBengali)
             }
 
-            // Expenses List
+            // Expenses List for Selected Period
             if (displayExpenses.isEmpty()) {
                 item {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 40.dp),
+                            .padding(top = 30.dp, bottom = 20.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = if (isBengali) "কোনো খরচের হিসাব পাওয়া যায়নি।" else "No expense records found.",
-                            color = MaterialTheme.colorScheme.outline,
-                            fontSize = 14.sp
-                        )
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(56.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.DateRange,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.outline,
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = if (isBengali) "এই সময়ে কোনো খরচের হিসাব নেই।" else stringResource(R.string.no_expenses_period),
+                                color = MaterialTheme.colorScheme.outline,
+                                fontSize = 14.sp
+                            )
+                        }
                     }
                 }
             } else {
@@ -347,4 +613,18 @@ fun HistoryScreen(
             }
         )
     }
+}
+
+private fun generateCsvForExpenses(expenses: List<ExpenseWithItems>): String {
+    val sb = StringBuilder()
+    sb.append("ID,Date,Merchant,TotalAmount,Currency,Category,PaymentMethod,Items\n")
+    val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US)
+    for (item in expenses) {
+        val e = item.expense
+        val itemsStr = item.items.joinToString(";") {
+            "${it.name} (${it.quantity ?: ""} ${it.unit ?: ""}: ${it.amount})"
+        }.replace("\"", "'")
+        sb.append("${e.id},\"${dateFormat.format(Date(e.date))}\",\"${e.merchant ?: ""}\",${e.totalAmount},${e.currency},${e.categoryId},${e.paymentMethod},\"$itemsStr\"\n")
+    }
+    return sb.toString()
 }

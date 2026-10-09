@@ -39,8 +39,23 @@ class GeminiExpenseAiService : ExpenseAiService {
     private val primaryModel = "gemini-2.5-flash"
 
     override suspend fun extractFromReceipt(bitmap: Bitmap): Result<ExtractedExpense> = withContext(Dispatchers.IO) {
+        // Step 1: Run fast on-device ML Kit OCR directly on the image
+        val ocrText = ReceiptOcrScanner.recognizeText(bitmap)
+        if (ocrText.isNotBlank()) {
+            val parsedFromOcr = LocalRuleBasedExtractor.parseReceiptText(ocrText)
+            if (parsedFromOcr.items.isNotEmpty() && parsedFromOcr.items.any { it.amount != null || it.quantity != null }) {
+                Log.d("GeminiAi", "Extracted ${parsedFromOcr.items.size} items from receipt using on-device OCR")
+                return@withContext Result.success(parsedFromOcr)
+            }
+        }
+
         val key = apiKey
         if (key.isBlank() || key.contains("MY_GEMINI_API_KEY")) {
+            // If OCR text was extracted but had no prices, return parsed text or helpful sample
+            if (ocrText.isNotBlank()) {
+                val parsed = LocalRuleBasedExtractor.parseReceiptText(ocrText)
+                return@withContext Result.success(parsed)
+            }
             // Safe fallback when key is not configured yet
             return@withContext Result.success(
                 ExtractedExpense(

@@ -1,22 +1,23 @@
 package com.example.ui.voice
 
+import android.Manifest
 import android.app.Activity
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
+import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,16 +31,17 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -70,9 +72,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import com.example.R
 import com.example.ui.ExpenseViewModel
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -82,6 +84,8 @@ fun VoiceEntryScreen(
     onNavigateToReconciliation: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    BackHandler { onNavigateBack() }
+
     val context = LocalContext.current
     val settings by viewModel.settings.collectAsState()
     val isBengali = settings?.language != "en"
@@ -90,14 +94,18 @@ fun VoiceEntryScreen(
     var spokenText by remember { mutableStateOf("") }
     var isListening by remember { mutableStateOf(false) }
 
-    // Speech Recognizer setup
+    // Fallback inline SpeechRecognizer
     val speechRecognizer = remember {
-        if (SpeechRecognizer.isRecognitionAvailable(context)) {
-            SpeechRecognizer.createSpeechRecognizer(context)
-        } else null
+        try {
+            if (SpeechRecognizer.isRecognitionAvailable(context)) {
+                SpeechRecognizer.createSpeechRecognizer(context)
+            } else null
+        } catch (e: Exception) {
+            null
+        }
     }
 
-    DisposableEffect(Unit) {
+    DisposableEffect(speechRecognizer) {
         val listener = object : RecognitionListener {
             override fun onReadyForSpeech(params: Bundle?) { isListening = true }
             override fun onBeginningOfSpeech() {}
@@ -127,18 +135,87 @@ fun VoiceEntryScreen(
         }
     }
 
-    // Permission launcher for audio recording
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        if (granted) {
-            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE, if (isBengali) "bn-BD" else "en-US")
-                putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+    // Android System Speech Recognizer Activity Launcher (least configuration, highest accuracy)
+    val speechActivityLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        isListening = false
+        if (result.resultCode == Activity.RESULT_OK && result.data != null) {
+            val matches = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+            val text = matches?.firstOrNull()
+            if (!text.isNullOrBlank()) {
+                spokenText = text
             }
-            speechRecognizer?.startListening(intent)
+        }
+    }
+
+    // Helper to start voice recognition
+    val startVoiceRecognition = {
+        val speechIntent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, if (isBengali) "bn-BD" else "en-US")
+            putExtra(RecognizerIntent.EXTRA_PROMPT, if (isBengali) "বাজারের খরচের বিবরণ বলুন..." else "Speak your expense items and prices...")
+        }
+
+        try {
             isListening = true
+            speechActivityLauncher.launch(speechIntent)
+        } catch (e: Exception) {
+            // Activity intent fallback: try inline SpeechRecognizer
+            if (speechRecognizer != null) {
+                try {
+                    speechRecognizer.startListening(speechIntent)
+                    isListening = true
+                } catch (ex: Exception) {
+                    isListening = false
+                    Toast.makeText(
+                        context,
+                        if (isBengali) "ভয়েস সার্ভিস পাওয়া যায়নি, নিচে টাইপ করুন বা নমুনা বাছাই করুন" else "Voice service not available. You can type or use sample prompts.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            } else {
+                isListening = false
+                Toast.makeText(
+                    context,
+                    if (isBengali) "ভয়েস সার্ভিস পাওয়া যায়নি, নিচে টাইপ করুন বা নমুনা বাছাই করুন" else "Voice service not available on this device. You can type or use sample prompts.",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+    }
+
+    // Microphone permission launcher
+    val micPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            startVoiceRecognition()
+        } else {
+            Toast.makeText(
+                context,
+                if (isBengali) "মাইক্রোফোন ব্যবহারের অনুমতি প্রয়োজন" else "Microphone permission is required for voice entry",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
+    // Mic click handler
+    val handleMicClick = {
+        if (isListening) {
+            speechRecognizer?.stopListening()
+            isListening = false
+        } else {
+            val hasPermission = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.RECORD_AUDIO
+            ) == PackageManager.PERMISSION_GRANTED
+
+            if (hasPermission) {
+                startVoiceRecognition()
+            } else {
+                micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+            }
         }
     }
 
@@ -166,7 +243,7 @@ fun VoiceEntryScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -180,9 +257,10 @@ fun VoiceEntryScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .verticalScroll(rememberScrollState())
                 .padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
+            verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             Column(
                 modifier = Modifier.fillMaxWidth(),
@@ -194,37 +272,30 @@ fun VoiceEntryScreen(
                     color = MaterialTheme.colorScheme.outline
                 )
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
                 // Microphone Circle Button
                 Box(
                     contentAlignment = Alignment.Center,
-                    modifier = Modifier.size(140.dp)
+                    modifier = Modifier.size(130.dp)
                 ) {
                     if (isListening) {
                         Box(
                             modifier = Modifier
-                                .size(140.dp)
+                                .size(130.dp)
                                 .scale(pulseScale)
                                 .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f))
+                                .background(MaterialTheme.colorScheme.error.copy(alpha = 0.2f))
                         )
                     }
 
                     Surface(
-                        onClick = {
-                            if (isListening) {
-                                speechRecognizer?.stopListening()
-                                isListening = false
-                            } else {
-                                permissionLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
-                            }
-                        },
+                        onClick = { handleMicClick() },
                         shape = CircleShape,
                         color = if (isListening) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.secondary,
                         shadowElevation = 8.dp,
                         modifier = Modifier
-                            .size(90.dp)
+                            .size(86.dp)
                             .testTag("mic_toggle_button")
                     ) {
                         Box(contentAlignment = Alignment.Center) {
@@ -232,13 +303,13 @@ fun VoiceEntryScreen(
                                 imageVector = if (isListening) Icons.Default.Stop else Icons.Default.Mic,
                                 contentDescription = "Microphone",
                                 tint = Color.White,
-                                modifier = Modifier.size(44.dp)
+                                modifier = Modifier.size(42.dp)
                             )
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 Text(
                     text = if (isListening) stringResource(R.string.listening) else stringResource(R.string.tap_to_speak),
                     fontWeight = FontWeight.SemiBold,
@@ -246,7 +317,7 @@ fun VoiceEntryScreen(
                     color = if (isListening) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.secondary
                 )
 
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(18.dp))
 
                 // Recognized Speech text box
                 OutlinedTextField(

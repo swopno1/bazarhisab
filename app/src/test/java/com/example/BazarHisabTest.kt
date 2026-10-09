@@ -83,4 +83,19 @@ class BazarHisabTest {
         assertEquals(12.0, egg.quantity ?: 0.0, 0.01)
         assertEquals(150.0, egg.amount ?: 0.0, 0.01)
     }
+
+    @Test
+    fun testReceiptTextParsing() {
+        val receipt = """
+            স্বপ্ন সুপার শপ
+            চাল ৫ কেজি ৪৫০ টাকা
+            সয়াবিন তেল ২ লিটার ৩৮০ টাকা
+            মোট: ৮৩০ টাকা
+        """.trimIndent()
+
+        val extracted = LocalRuleBasedExtractor.parseReceiptText(receipt)
+        assertNotNull(extracted)
+        assertTrue(extracted.items.isNotEmpty())
+        assertEquals(830.0, extracted.total ?: 0.0, 0.01)
+    }
 }

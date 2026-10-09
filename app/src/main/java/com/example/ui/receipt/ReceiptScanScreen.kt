@@ -1,17 +1,16 @@
 package com.example.ui.receipt
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.result.launch
 import androidx.activity.result.PickVisualMediaRequest
-import androidx.compose.animation.AnimatedVisibility
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,12 +22,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.DocumentScanner
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material3.Button
@@ -60,13 +62,14 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import com.example.R
+import com.example.ai.ReceiptOcrScanner
 import com.example.ui.ExpenseViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -84,7 +87,7 @@ fun ReceiptScanScreen(
 
     var selectedBitmap by remember { mutableStateOf<Bitmap?>(null) }
 
-    // Camera launcher
+    // Camera capture launcher
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicturePreview()
     ) { bitmap: Bitmap? ->
@@ -96,7 +99,36 @@ fun ReceiptScanScreen(
         }
     }
 
-    // Photo picker launcher
+    // Camera permission request launcher
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            cameraLauncher.launch(null)
+        } else {
+            Toast.makeText(
+                context,
+                if (isBengali) "ক্যামেরা ব্যবহারের অনুমতি প্রয়োজন" else "Camera permission is required to scan receipts",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
+    // Launch camera helper with permission check
+    val launchCameraWithPermission = {
+        val hasPermission = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.CAMERA
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (hasPermission) {
+            cameraLauncher.launch(null)
+        } else {
+            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
+
+    // Photo picker launcher (Gallery)
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri: Uri? ->
@@ -112,7 +144,11 @@ fun ReceiptScanScreen(
                     }
                 }
             } catch (e: Exception) {
-                // Ignore or handle
+                Toast.makeText(
+                    context,
+                    if (isBengali) "ছবি লোড করা যায়নি" else "Failed to load selected photo",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
     }
@@ -129,7 +165,7 @@ fun ReceiptScanScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -143,9 +179,10 @@ fun ReceiptScanScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .verticalScroll(rememberScrollState())
                 .padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Viewfinder or Preview Box
             Card(
@@ -156,7 +193,7 @@ fun ReceiptScanScreen(
                 border = CardDefaults.outlinedCardBorder(),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f)
+                    .height(260.dp)
                     .clip(RoundedCornerShape(24.dp))
             ) {
                 Box(
@@ -178,7 +215,7 @@ fun ReceiptScanScreen(
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(72.dp)
+                                    .size(68.dp)
                                     .clip(CircleShape)
                                     .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
                                 contentAlignment = Alignment.Center
@@ -187,10 +224,10 @@ fun ReceiptScanScreen(
                                     imageVector = Icons.Default.Receipt,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(36.dp)
+                                    modifier = Modifier.size(34.dp)
                                 )
                             }
-                            Spacer(modifier = Modifier.height(16.dp))
+                            Spacer(modifier = Modifier.height(14.dp))
                             Text(
                                 text = if (isBengali) "রশিদটি ক্যামেরার সামনে সোজা রাখুন" else "Hold receipt flat in good light",
                                 style = MaterialTheme.typography.titleMedium,
@@ -200,7 +237,10 @@ fun ReceiptScanScreen(
                             )
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
-                                text = if (isBengali) "বাংলা বা ইংরেজি যেকোনো বাজারের রশিদ, মেমো বা হাতে লেখা তালিকা" else "Super shop receipt, grocery memo, or handwritten bazaar list",
+                                text = if (isBengali)
+                                    "সুপারশপ রশিদ, মেমো বা হাতে লেখা তালিকা — অন-ডিভাইস OCR দ্বারা স্বয়ংক্রিয় হিসাব বের হবে"
+                                else
+                                    "Super shop receipt, grocery memo, or handwritten list — fast on-device OCR extraction",
                                 style = MaterialTheme.typography.bodySmall,
                                 textAlign = TextAlign.Center,
                                 color = MaterialTheme.colorScheme.outline
@@ -210,7 +250,7 @@ fun ReceiptScanScreen(
 
                     if (isAiProcessing) {
                         Surface(
-                            color = Color.Black.copy(alpha = 0.7f),
+                            color = Color.Black.copy(alpha = 0.75f),
                             shape = RoundedCornerShape(16.dp),
                             modifier = Modifier.padding(24.dp)
                         ) {
@@ -236,17 +276,14 @@ fun ReceiptScanScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
             // Action Buttons
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                // Primary: Camera Photo with instant OCR
                 Button(
-                    onClick = {
-                        cameraLauncher.launch()
-                    },
+                    onClick = { launchCameraWithPermission() },
                     shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary
@@ -265,6 +302,31 @@ fun ReceiptScanScreen(
                     )
                 }
 
+                // Google Lens / Visual Search Action
+                OutlinedButton(
+                    onClick = {
+                        ReceiptOcrScanner.openGoogleLens(context, null)
+                    },
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp)
+                        .testTag("google_lens_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.DocumentScanner,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (isBengali) "গুগল লেন্স দিয়ে স্ক্যান করুন" else stringResource(R.string.scan_with_lens),
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                // Gallery Photo Picker
                 OutlinedButton(
                     onClick = {
                         galleryLauncher.launch(
@@ -289,7 +351,6 @@ fun ReceiptScanScreen(
                 // Sample Demo Receipt Button for instant evaluation
                 Surface(
                     onClick = {
-                        // Create a synthetic sample bitmap & process
                         val demoBitmap = Bitmap.createBitmap(400, 600, Bitmap.Config.ARGB_8888)
                         viewModel.processReceiptImage(demoBitmap) {
                             onNavigateToReconciliation()

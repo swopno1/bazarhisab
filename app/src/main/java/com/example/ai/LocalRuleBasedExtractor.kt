@@ -180,4 +180,67 @@ object LocalRuleBasedExtractor {
 
         return results
     }
+
+    /**
+     * Parses raw OCR text extracted from receipts or shopping memos.
+     */
+    fun parseReceiptText(rawText: String): ExtractedExpense {
+        val lines = rawText.lines().map { it.trim() }.filter { it.isNotBlank() }
+        if (lines.isEmpty()) {
+            return ExtractedExpense(
+                merchant = "দোকানের রশিদ",
+                items = listOf(ExtractedItem(name = "বাজারের সামগ্রী", amount = null)),
+                confidence = 0.5f
+            )
+        }
+
+        var detectedMerchant: String? = null
+        var detectedTotal: Double? = null
+        val extractedItems = mutableListOf<ExtractedItem>()
+
+        // Look at top lines for potential store name
+        for (i in 0 until minOf(3, lines.size)) {
+            val line = lines[i]
+            if (!line.contains(Regex("""\d{3,}""")) && line.length in 3..40) {
+                detectedMerchant = line
+                break
+            }
+        }
+
+        for (line in lines) {
+            val engLine = BengaliNumberUtils.toEnglishDigits(line)
+
+            // Check if line indicates Total / Grand Total / মোট
+            val totalMatch = Regex("""(total|subtotal|net|amount|grand total|মোট|সর্বমোট)[:\s]*([0-9]+(\.[0-9]+)?)""", RegexOption.IGNORE_CASE).find(engLine)
+            if (totalMatch != null) {
+                val candidateTotal = totalMatch.groupValues[2].toDoubleOrNull()
+                if (candidateTotal != null && candidateTotal > (detectedTotal ?: 0.0)) {
+                    detectedTotal = candidateTotal
+                    continue
+                }
+            }
+
+            // Parse item line
+            val parsedList = parseShoppingList(line)
+            for (item in parsedList) {
+                if (item.amount != null || item.quantity != null) {
+                    extractedItems.add(item)
+                }
+            }
+        }
+
+        val itemsToUse = if (extractedItems.isNotEmpty()) extractedItems else parseShoppingList(rawText)
+        val finalTotal = detectedTotal ?: itemsToUse.sumOf { it.amount ?: 0.0 }.takeIf { it > 0 }
+
+        return ExtractedExpense(
+            merchant = detectedMerchant ?: "বাজারের রশিদ",
+            total = finalTotal,
+            items = itemsToUse.ifEmpty {
+                listOf(ExtractedItem(name = "বাজারের সামগ্রী", amount = finalTotal, category = "groceries"))
+            },
+            category = itemsToUse.firstOrNull()?.category ?: "groceries",
+            confidence = 0.90f
+        )
+    }
 }
+

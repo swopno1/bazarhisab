@@ -116,12 +116,20 @@
     <string name="history_title">Expense History</string>
     <string name="search_hint">Search items, shops, notes...</string>
     <string name="filter_all">All</string>
-    <string name="filter_today">Today</string>
-    <string name="filter_week">This Week</string>
-    <string name="filter_month">This Month</string>
+    <string name="filter_today">Day</string>
+    <string name="filter_week">Week</string>
+    <string name="filter_month">Month</string>
+    <string name="filter_year">Year</string>
     <string name="total_spent">Total: %s</string>
     <string name="export_csv">Export to CSV</string>
-    <string name="monthly_summary_title">Monthly Category Breakdown</string>
+    <string name="monthly_summary_title">Category Breakdown</string>
+    <string name="no_expenses_period">No expenses recorded for this period.</string>
+    <string name="scan_with_lens">Scan with Google Lens</string>
+    <string name="scan_with_lens_hint">Use Google Lens visual intelligence</string>
+    <string name="voice_mic_tap">Tap the microphone to speak</string>
+    <string name="voice_not_supported">Voice recognition service is not available on this device. You can type or pick sample prompts.</string>
+    <string name="camera_permission_toast">Camera permission is required to photograph receipts.</string>
+    <string name="mic_permission_toast">Microphone permission is required for voice input.</string>
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>

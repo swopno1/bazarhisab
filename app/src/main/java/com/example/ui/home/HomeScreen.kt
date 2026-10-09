@@ -296,21 +296,27 @@ fun HomeScreen(
                     title = stringResource(R.string.scan_receipt),
                     icon = Icons.Default.CameraAlt,
                     color = Color(0xFF2E7D32),
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("quick_scan_receipt_button"),
                     onClick = onNavigateToScan
                 )
                 QuickEntryCard(
                     title = stringResource(R.string.voice_entry),
                     icon = Icons.Default.Mic,
                     color = Color(0xFFE65100),
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("quick_voice_entry_button"),
                     onClick = onNavigateToVoice
                 )
                 QuickEntryCard(
                     title = stringResource(R.string.shopping_list),
                     icon = Icons.Default.Description,
                     color = Color(0xFF00695C),
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("quick_shopping_list_button"),
                     onClick = onNavigateToShopping
                 )
             }
