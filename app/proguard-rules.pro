@@ -3,6 +3,9 @@
 -renamesourcefileattribute SourceFile
 -printmapping mapping.txt
 
+# Disable multi-pass code optimization to prevent build timeout while keeping shrinking & obfuscation active
+-dontoptimize
+
 # ====================================================================
 # Room Database & Entities
 # ====================================================================
