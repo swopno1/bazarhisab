@@ -10,6 +10,11 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -88,14 +93,15 @@ fun ReceiptScanScreen(
     val settings by viewModel.settings.collectAsState()
     val isBengali = settings?.language != "en"
 
-    var selectedBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var selectedImageModel by remember { mutableStateOf<Any?>(null) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
 
     // Camera capture launcher
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicturePreview()
     ) { bitmap: Bitmap? ->
         if (bitmap != null) {
-            selectedBitmap = bitmap
+            selectedImageModel = bitmap
             viewModel.processReceiptImage(bitmap) {
                 onNavigateToReconciliation()
             }
@@ -131,27 +137,38 @@ fun ReceiptScanScreen(
         }
     }
 
-    // Photo picker launcher (Gallery)
+    // Photo picker launcher with Coil automatic downsampling & memory management
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri: Uri? ->
         if (uri != null) {
-            try {
-                context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                    val bitmap = BitmapFactory.decodeStream(inputStream)
+            selectedImageModel = uri
+            scope.launch(Dispatchers.IO) {
+                try {
+                    val imageLoader = coil.Coil.imageLoader(context)
+                    val request = coil.request.ImageRequest.Builder(context)
+                        .data(uri)
+                        .size(1200, 1600) // Automatic downsampling to optimize bitmap memory usage
+                        .allowHardware(false) // Software bitmap for ML Kit OCR
+                        .build()
+                    val result = imageLoader.execute(request)
+                    val bitmap = (result.drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap
                     if (bitmap != null) {
-                        selectedBitmap = bitmap
-                        viewModel.processReceiptImage(bitmap, imageUri = uri.toString()) {
-                            onNavigateToReconciliation()
+                        withContext(Dispatchers.Main) {
+                            viewModel.processReceiptImage(bitmap, imageUri = uri.toString()) {
+                                onNavigateToReconciliation()
+                            }
                         }
                     }
+                } catch (e: Exception) {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(
+                            context,
+                            if (isBengali) "ছবি লোড করা যায়নি" else "Failed to load selected photo",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
                 }
-            } catch (e: Exception) {
-                Toast.makeText(
-                    context,
-                    if (isBengali) "ছবি লোড করা যায়নি" else "Failed to load selected photo",
-                    Toast.LENGTH_SHORT
-                ).show()
             }
         }
     }
@@ -203,9 +220,12 @@ fun ReceiptScanScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (selectedBitmap != null) {
-                        Image(
-                            bitmap = selectedBitmap!!.asImageBitmap(),
+                    if (selectedImageModel != null) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(selectedImageModel)
+                                .crossfade(true)
+                                .build(),
                             contentDescription = "Selected Receipt",
                             contentScale = ContentScale.Fit,
                             modifier = Modifier.fillMaxSize()

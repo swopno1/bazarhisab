@@ -3,7 +3,8 @@
 -renamesourcefileattribute SourceFile
 -printmapping mapping.txt
 
-# Disable multi-pass code optimization to prevent build timeout while keeping shrinking & obfuscation active
+# Disable multi-pass optimization loops to prevent 504 Gateway Time-out during bundling,
+# while keeping R8 code shrinking and symbol obfuscation fully active.
 -dontoptimize
 
 # ====================================================================
@@ -75,3 +76,10 @@
 -keepclassmembers class * {
     @androidx.compose.runtime.Composable *;
 }
+
+# ====================================================================
+# CameraX & Coil
+# ====================================================================
+-dontwarn androidx.camera.**
+-dontwarn coil.**
+

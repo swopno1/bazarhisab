@@ -10,6 +10,9 @@ import com.google.android.gms.ads.LoadAdError
 import com.google.android.gms.ads.MobileAds
 import com.google.android.gms.ads.interstitial.InterstitialAd
 import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 object AdManager {
     private const val TAG = "AdManager"
@@ -20,18 +23,20 @@ object AdManager {
     private const val ACTIONS_BETWEEN_INTERSTITIALS = 3 // Throttled to avoid overwhelming the user
 
     fun initialize(context: Context) {
-        try {
-            val configuration = com.google.android.gms.ads.RequestConfiguration.Builder()
-                .setTestDeviceIds(listOf(AdRequest.DEVICE_ID_EMULATOR))
-                .build()
-            MobileAds.setRequestConfiguration(configuration)
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val configuration = com.google.android.gms.ads.RequestConfiguration.Builder()
+                    .setTestDeviceIds(listOf(AdRequest.DEVICE_ID_EMULATOR))
+                    .build()
+                MobileAds.setRequestConfiguration(configuration)
 
-            MobileAds.initialize(context) { status ->
-                Log.d(TAG, "AdMob MobileAds initialized successfully: $status")
+                MobileAds.initialize(context) { status ->
+                    Log.d(TAG, "AdMob MobileAds initialized successfully: $status")
+                }
+                loadInterstitial(context)
+            } catch (e: Throwable) {
+                Log.w(TAG, "Notice during MobileAds initialization: ${e.message}")
             }
-            loadInterstitial(context)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error initializing MobileAds: ${e.message}", e)
         }
     }
 
