@@ -8,11 +8,15 @@ the app still works: manual entry and on-device parsing keep working, and
 AI calls fail with a clear "AI isn't set up yet" message instead of
 inventing data.
 
-> Do NOT commit `google-services.json` to the repo. It identifies the
-> Firebase project; it is not a Gemini API key, but it belongs to the
-> project, not the source tree. It is listed in `.gitignore` (added in
-> this branch) — if you see it in `git status`, do not force-add it.
-> (`.env` is ignored too — the old `.env` Gemini key path is deprecated).
+> `google-services.json` **is committed in this branch** (`app/google-services.json`,
+> project `bazarhisab-9bdaf`, package `com.vivescriptsolutions.bazarhisab`) —
+> the founder supplied it 2026-11-08 and asked for it to be used for Firebase
+> configuration, so clean checkouts and release builds work without a manual
+> file drop. This reverses the earlier "do not commit" rule in this doc.
+> It is not a Gemini API key and no secret is in it, but do restrict the
+> Android API key in Google Cloud Console (Android-app restriction + API
+> restrictions) and keep App Check enforcement as the gate. (`.env` is still
+> ignored — the old `.env` Gemini key path is deprecated.)
 
 ## 1. Create / pick the Firebase project
 

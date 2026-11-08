@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "205826943225",
+    "project_id": "bazarhisab-9bdaf",
+    "storage_bucket": "bazarhisab-9bdaf.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:205826943225:android:2a57be775fb35ecba15a28",
+        "android_client_info": {
+          "package_name": "com.vivescriptsolutions.bazarhisab"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAObHO6FXfwRDVjsJdk_rr56FvOUY5CRws"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

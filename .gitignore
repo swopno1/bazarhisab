@@ -15,5 +15,4 @@
 .cxx
 local.properties
 .env
-google-services.json
 debug.keystore
