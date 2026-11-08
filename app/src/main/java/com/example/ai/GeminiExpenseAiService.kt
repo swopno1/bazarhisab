@@ -39,8 +39,13 @@ class GeminiExpenseAiService : ExpenseAiService {
     private val primaryModel = "gemini-2.5-flash"
 
     override suspend fun extractFromReceipt(bitmap: Bitmap): Result<ExtractedExpense> = withContext(Dispatchers.IO) {
-        // Step 1: Run fast on-device ML Kit OCR directly on the image
-        val ocrText = ReceiptOcrScanner.recognizeText(bitmap)
+        // Step 1: Run fast on-device ML Kit OCR directly on the image.
+        // An OCR failure is surfaced (not swallowed as empty text): it only
+        // falls through to Gemini vision when a real key is configured.
+        val ocrResult = ReceiptOcrScanner.recognizeText(bitmap)
+        val ocrError = ocrResult.exceptionOrNull()
+        val ocrText = ocrResult.getOrDefault("")
+
         if (ocrText.isNotBlank()) {
             val parsedFromOcr = LocalRuleBasedExtractor.parseReceiptText(ocrText)
             if (parsedFromOcr.items.isNotEmpty() && parsedFromOcr.items.any { it.amount != null || it.quantity != null }) {
@@ -51,26 +56,25 @@ class GeminiExpenseAiService : ExpenseAiService {
 
         val key = apiKey
         if (key.isBlank() || key.contains("MY_GEMINI_API_KEY")) {
-            // If OCR text was extracted but had no prices, return parsed text or helpful sample
+            // No Gemini key is configured, so there is no vision fallback.
+            // Never invent receipt items: if OCR produced no priced items,
+            // report the failure so the UI can tell the user instead of
+            // saving a fabricated receipt as a real expense.
             if (ocrText.isNotBlank()) {
                 val parsed = LocalRuleBasedExtractor.parseReceiptText(ocrText)
-                return@withContext Result.success(parsed)
+                if (parsed.items.any { it.amount != null } || (parsed.total ?: 0.0) > 0.0) {
+                    return@withContext Result.success(parsed)
+                }
             }
-            // Safe fallback when key is not configured yet
-            return@withContext Result.success(
-                ExtractedExpense(
-                    merchant = "রশিদ / Store Receipt",
-                    items = listOf(
-                        ExtractedItem(name = "চাল (Rice)", quantity = 5.0, unit = "kg", amount = 450.0, category = "rice_grains", confidence = 0.95f),
-                        ExtractedItem(name = "সয়াবিন তেল (Oil)", quantity = 2.0, unit = "liter", amount = 380.0, category = "oil_spices", confidence = 0.90f),
-                        ExtractedItem(name = "ডিম (Eggs)", quantity = 12.0, unit = "pcs", amount = 150.0, category = "eggs", confidence = 0.95f),
-                        ExtractedItem(name = "আলু ও পেঁয়াজ", quantity = 3.0, unit = "kg", amount = 180.0, category = "vegetables", confidence = 0.85f)
-                    ),
-                    total = 1160.0,
-                    category = "groceries",
-                    confidence = 0.90f
-                )
+            val reason = ocrError?.message
+                ?: "No readable text or prices were found on this receipt."
+            return@withContext Result.failure(
+                Exception("Could not read this receipt. $reason Please type the items manually.")
             )
+        }
+
+        if (ocrError != null) {
+            Log.w("GeminiExpenseAi", "On-device OCR failed, trying Gemini vision", ocrError)
         }
 
         try {

@@ -79,6 +79,7 @@ fun ManualEntryScreen(
     var merchant by remember { mutableStateOf("") }
     var selectedPaymentMethod by remember { mutableStateOf("cash") }
     var note by remember { mutableStateOf("") }
+    var amountError by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
         topBar = {
@@ -110,12 +111,22 @@ fun ManualEntryScreen(
                     onClick = {
                         val parsedAmount = BengaliNumberUtils.parseAmount(amountStr)
                         if (parsedAmount != null && parsedAmount > 0) {
+                            amountError = null
                             viewModel.prepareManualDraft(
                                 amount = parsedAmount,
                                 description = description.ifBlank { if (isBengali) "বাজারের খরচ" else "Grocery Expense" },
-                                category = selectedCategory
+                                category = selectedCategory,
+                                merchant = merchant,
+                                paymentMethod = selectedPaymentMethod,
+                                note = note
                             ) {
                                 onNavigateToReconciliation()
+                            }
+                        } else {
+                            amountError = if (isBengali) {
+                                "সঠিক পরিমাণ লিখুন (০ টাকার বেশি হতে হবে)"
+                            } else {
+                                "Enter a valid amount greater than ৳0"
                             }
                         }
                     },
@@ -166,13 +177,14 @@ fun ManualEntryScreen(
                     Spacer(modifier = Modifier.height(10.dp))
                     OutlinedTextField(
                         value = amountStr,
-                        onValueChange = { amountStr = it },
+                        onValueChange = { amountStr = it; amountError = null },
                         placeholder = { Text("e.g. 500 or ৫০০") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         modifier = Modifier
                             .fillMaxWidth()
                             .testTag("amount_input"),
                         shape = RoundedCornerShape(14.dp),
+                        isError = amountError != null,
                         prefix = {
                             Text(
                                 text = "৳ ",
@@ -182,6 +194,15 @@ fun ManualEntryScreen(
                             )
                         }
                     )
+                    if (amountError != null) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = amountError!!,
+                            color = MaterialTheme.colorScheme.error,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
             }
 

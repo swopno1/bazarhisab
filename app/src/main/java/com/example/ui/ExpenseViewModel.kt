@@ -89,6 +89,20 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     private val _aiErrorMessage = MutableStateFlow<String?>(null)
     val aiErrorMessage = _aiErrorMessage.asStateFlow()
 
+    private val _isSaving = MutableStateFlow(false)
+    val isSaving = _isSaving.asStateFlow()
+
+    private val _saveErrorMessage = MutableStateFlow<String?>(null)
+    val saveErrorMessage = _saveErrorMessage.asStateFlow()
+
+    fun clearAiError() {
+        _aiErrorMessage.value = null
+    }
+
+    fun clearSaveError() {
+        _saveErrorMessage.value = null
+    }
+
     init {
         val db = AppDatabase.getDatabase(application)
         repository = ExpenseRepository(db.expenseDao(), db.shoppingListDao(), db.settingsDao())
@@ -143,12 +157,12 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
             val result = aiService.extractFromReceipt(bitmap)
             _isAiProcessing.value = false
 
+            // On failure, surface the error and stay on the scan screen:
+            // never navigate to a placeholder draft.
             val extracted = result.getOrElse {
-                ExtractedExpense(
-                    merchant = "রশিদ / Receipt",
-                    items = listOf(ExtractedItem(name = "বাজারের সামগ্রী", amount = null)),
-                    confidence = 0.5f
-                )
+                _aiErrorMessage.value = it.message
+                    ?: "Could not read this receipt. Please type the items manually."
+                return@launch
             }
             loadDraftFromExtracted(extracted, source = "RECEIPT", imageUri = imageUri)
             onReady()
@@ -163,26 +177,35 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
             _isAiProcessing.value = false
 
             val extracted = result.getOrElse {
-                ExtractedExpense(
-                    items = listOf(ExtractedItem(name = text.take(30), amount = null)),
-                    confidence = 0.5f
-                )
+                _aiErrorMessage.value = it.message
+                    ?: "Could not understand that. Please try again or type it."
+                return@launch
             }
             loadDraftFromExtracted(extracted, source = "VOICE")
             onReady()
         }
     }
 
-    fun prepareManualDraft(amount: Double?, description: String, category: String, onReady: () -> Unit) {
+    fun prepareManualDraft(
+        amount: Double?,
+        description: String,
+        category: String,
+        merchant: String? = null,
+        paymentMethod: String = "cash",
+        note: String = "",
+        onReady: () -> Unit
+    ) {
         val items = if (amount != null && amount > 0) {
             listOf(ExtractedItem(name = description.ifBlank { "বাজার" }, amount = amount, category = category))
         } else emptyList()
 
         val draft = ExtractedExpense(
-            merchant = null,
+            merchant = merchant?.ifBlank { null },
             total = amount,
             items = items,
             category = category,
+            paymentMethod = paymentMethod,
+            notes = note,
             confidence = 1.0f
         )
         loadDraftFromExtracted(draft, source = "MANUAL")
@@ -284,42 +307,78 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun saveDraftExpense(onSaved: () -> Unit) {
+        // In-flight guard: a double-tap must not insert the expense twice.
+        if (_isSaving.value) return
         val state = _reconciliationState.value
-        val finalAmount = if (state.items.isNotEmpty()) {
-            state.calculatedTotal
-        } else {
-            state.receiptTotal ?: 0.0
+
+        // Resolve each item's amount: explicit amount wins, otherwise
+        // quantity x unitPrice. Items with no price at all contribute 0.
+        val resolvedItems = state.items.map { item ->
+            val derivedAmount = item.amount
+                ?: if (item.quantity != null && item.unitPrice != null) {
+                    item.quantity * item.unitPrice
+                } else {
+                    null
+                }
+            item.copy(amount = derivedAmount)
+        }
+        val itemSum = resolvedItems.sumOf { it.amount ?: 0.0 }
+        // Prefer the receipt total when the items add up to nothing
+        // (e.g. an unscanned receipt with a known total).
+        val finalAmount = when {
+            itemSum > 0 -> itemSum
+            (state.receiptTotal ?: 0.0) > 0 -> state.receiptTotal!!
+            else -> itemSum
         }
 
+        // Never save a ৳0 (or negative) expense: show an error instead.
+        if (finalAmount <= 0) {
+            _saveErrorMessage.value =
+                "Cannot save a ৳0 expense. Please add a price to at least one item."
+            return
+        }
+
+        _isSaving.value = true
+        _saveErrorMessage.value = null
         viewModelScope.launch {
-            val expense = ExpenseEntity(
-                title = state.title.ifBlank { "বাজারের খরচ" },
-                totalAmount = finalAmount,
-                currency = "BDT",
-                date = state.date,
-                merchant = state.merchant.ifBlank { null },
-                categoryId = state.categoryId,
-                paymentMethod = state.paymentMethod,
-                source = state.source,
-                note = state.note.ifBlank { null },
-                imageUri = state.imageUri
-            )
-
-            val items = state.items.map {
-                ExpenseItemEntity(
-                    expenseId = 0,
-                    name = it.name.ifBlank { "পণ্য" },
-                    quantity = it.quantity,
-                    unit = it.unit,
-                    unitPrice = it.unitPrice,
-                    amount = it.amount ?: 0.0,
-                    categoryId = it.category ?: state.categoryId,
-                    confidence = it.confidence
+            try {
+                val expense = ExpenseEntity(
+                    title = state.title.ifBlank { "বাজারের খরচ" },
+                    totalAmount = finalAmount,
+                    currency = "BDT",
+                    date = state.date,
+                    merchant = state.merchant.ifBlank { null },
+                    categoryId = state.categoryId,
+                    paymentMethod = state.paymentMethod,
+                    source = state.source,
+                    note = state.note.ifBlank { null },
+                    imageUri = state.imageUri
                 )
-            }
 
-            repository.insertExpense(expense, items)
-            onSaved()
+                val items = resolvedItems.map {
+                    ExpenseItemEntity(
+                        expenseId = 0,
+                        name = it.name.ifBlank { "পণ্য" },
+                        quantity = it.quantity,
+                        unit = it.unit,
+                        unitPrice = it.unitPrice,
+                        amount = it.amount ?: 0.0,
+                        categoryId = it.category ?: state.categoryId,
+                        confidence = it.confidence
+                    )
+                }
+
+                repository.insertExpense(expense, items)
+                // Clear the draft so a second save / back-navigation cannot
+                // re-insert the same expense.
+                _reconciliationState.value = ReconciliationState()
+                onSaved()
+            } catch (e: Exception) {
+                _saveErrorMessage.value =
+                    "Could not save this expense. Please try again."
+            } finally {
+                _isSaving.value = false
+            }
         }
     }
 

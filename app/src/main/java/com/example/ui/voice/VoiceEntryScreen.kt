@@ -90,6 +90,7 @@ fun VoiceEntryScreen(
     val settings by viewModel.settings.collectAsState()
     val isBengali = settings?.language != "en"
     val isAiProcessing by viewModel.isAiProcessing.collectAsState()
+    val aiErrorMessage by viewModel.aiErrorMessage.collectAsState()
 
     var spokenText by remember { mutableStateOf("") }
     var isListening by remember { mutableStateOf(false) }
@@ -388,6 +389,19 @@ fun VoiceEntryScreen(
                         }
                     }
                 }
+            }
+
+            // AI failure is shown here instead of navigating to a
+            // placeholder draft; the user stays and can retry or edit.
+            if (aiErrorMessage != null) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = aiErrorMessage!!,
+                    color = MaterialTheme.colorScheme.error,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
 
             // Bottom CTA: Extract Expense Items
