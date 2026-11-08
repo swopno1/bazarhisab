@@ -20,24 +20,33 @@ object ReceiptOcrScanner {
     /**
      * Extracts text from an image bitmap using Google Play Services ML Kit.
      * Runs 100% on-device, offline, with zero API key configuration.
+     *
+     * Returns [Result.failure] (instead of a silent empty string) when
+     * recognition fails, so callers can surface the error instead of
+     * falling through to a fabricated or empty draft. Note: the on-device
+     * recognizer is Latin-script only and cannot read Bengali receipts.
      */
-    suspend fun recognizeText(bitmap: Bitmap): String = suspendCancellableCoroutine { continuation ->
+    suspend fun recognizeText(bitmap: Bitmap): Result<String> = suspendCancellableCoroutine { continuation ->
         try {
             val image = InputImage.fromBitmap(bitmap, 0)
             recognizer.process(image)
                 .addOnSuccessListener { visionText ->
                     if (continuation.isActive) {
-                        continuation.resume(visionText.text)
+                        continuation.resume(Result.success(visionText.text))
                     }
                 }
-                .addOnFailureListener {
+                .addOnFailureListener { error ->
                     if (continuation.isActive) {
-                        continuation.resume("")
+                        continuation.resume(
+                            Result.failure(error as? Exception ?: Exception("Text recognition failed"))
+                        )
                     }
                 }
         } catch (e: Throwable) {
             if (continuation.isActive) {
-                continuation.resume("")
+                continuation.resume(
+                    Result.failure(e as? Exception ?: Exception("Text recognition failed", e))
+                )
             }
         }
     }
