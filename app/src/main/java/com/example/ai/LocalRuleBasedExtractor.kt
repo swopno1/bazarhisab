@@ -39,7 +39,24 @@ object LocalRuleBasedExtractor {
     }
 
     /**
+     * Removes thousands-grouping commas between digits ("1,160" -> "1160",
+     * "১,১৬০" -> "1160" once Bengali digits are converted). Plain commas
+     * that separate items/phrases are left untouched.
+     */
+    private fun stripGroupedCommas(text: String): String =
+        text.replace(Regex("(?<=\\d),(?=\\d)"), "")
+
+    /** Quantity units. The negative lookahead stops "৮০ টাকা" being read as
+     * quantity 80 with unit "টা" (the "টা" in "টাকা" is followed by a letter). */
+    private const val QTY_UNIT_PATTERN =
+        """(\d+(\.\d+)?)\s*(কেজি|লিটার|গ্রাম|টা|টি|kg|g|l|liter|pcs|dozen)(?![\p{L}])"""
+
+    /**
      * Parse natural language voice text into ExtractedExpense.
+     *
+     * Price rule: strip the quantity+unit first, then take the LAST number
+     * in the segment as the price — so "চাল ৫ কেজি ৪৫০ টাকা" is ৳450
+     * (qty 5), not ৳5. This mirrors parseShoppingList.
      */
     fun parseVoice(text: String): ExtractedExpense {
         val engDigitsText = BengaliNumberUtils.toEnglishDigits(text)
@@ -57,31 +74,36 @@ object LocalRuleBasedExtractor {
             merchant = "Grocery Store"
         }
 
-        for (part in parts) {
-            // Find price in this segment
-            val priceMatch = Regex("""(\d+(\.\d+)?)\s*(টাকা|টা|tk|taka)?""", RegexOption.IGNORE_CASE).find(part)
+        for (rawPart in parts) {
+            val part = stripGroupedCommas(rawPart)
+
+            // 1. Extract quantity+unit first, then remove it from the segment.
+            val qtyMatch = Regex(QTY_UNIT_PATTERN, RegexOption.IGNORE_CASE).find(part)
+            var qty: Double? = null
+            var unit: String? = null
+            var remaining = part
+            if (qtyMatch != null) {
+                qty = qtyMatch.groupValues[1].toDoubleOrNull()
+                unit = qtyMatch.groupValues[3]
+                remaining = remaining.removeRange(qtyMatch.range).trim()
+            }
+
+            // 2. Price is the LAST number left in the segment.
+            val priceMatches = Regex("""(\d+(\.\d+)?)\s*(টাকা|tk|taka)?""", RegexOption.IGNORE_CASE)
+                .findAll(remaining).toList()
+            val priceMatch = priceMatches.lastOrNull()
             if (priceMatch != null) {
                 val amount = priceMatch.groupValues[1].toDoubleOrNull() ?: continue
-                // Clean name
-                var name = part.substring(0, priceMatch.range.first).trim()
+                // Clean name: text before the price (or after it, if that is all there is).
+                var name = remaining.substring(0, priceMatch.range.first).trim()
                 if (name.isBlank()) {
-                    name = part.substring(priceMatch.range.last + 1).trim()
+                    name = remaining.substring(priceMatch.range.last + 1).trim()
                 }
                 name = name.replace(Regex("""^(আজ|আজকে|কিনেছি|খরচ|হয়েছে|মোট|টাকা|today|bought|spent|for)\s*""", RegexOption.IGNORE_CASE), "")
                     .replace(Regex("""\s*(কিনেছি|খরচ|হয়েছে|টাকা|bought|spent)$""", RegexOption.IGNORE_CASE), "")
                     .trim()
 
                 if (name.isNotBlank()) {
-                    // Extract quantity if present
-                    val qtyMatch = Regex("""(\d+(\.\d+)?)\s*(কেজি|লিটার|টা|টি|গ্রাম|kg|g|l|pcs)""", RegexOption.IGNORE_CASE).find(name)
-                    var qty: Double? = null
-                    var unit: String? = null
-                    if (qtyMatch != null) {
-                        qty = qtyMatch.groupValues[1].toDoubleOrNull()
-                        unit = qtyMatch.groupValues[3]
-                        name = name.removeRange(qtyMatch.range).trim()
-                    }
-
                     val cat = ExpenseCategories.matchCategoryByItemName(name)
                     items.add(
                         ExtractedItem(
@@ -136,7 +158,7 @@ object LocalRuleBasedExtractor {
             val cleanLine = line.replace(Regex("""^[-•*☐☑✓\d+\.]\s*"""), "").trim()
             if (cleanLine.isBlank()) continue
 
-            val engDigits = BengaliNumberUtils.toEnglishDigits(cleanLine)
+            val engDigits = stripGroupedCommas(BengaliNumberUtils.toEnglishDigits(cleanLine))
 
             // Pattern: [Item Name] [Optional Quantity] [Optional Price]
             // e.g. "চাল ৫ কেজি ৪৫০" or "Rice 5kg 450" or "ডিম ১২টা"
@@ -150,7 +172,7 @@ object LocalRuleBasedExtractor {
             }
 
             // Extract quantity: e.g. "5 kg", "২ কেজি", "12 pcs", "1 liter"
-            val qtyMatch = Regex("""(\d+(\.\d+)?)\s*(কেজি|লিটার|গ্রাম|টা|টি|kg|g|l|liter|pcs|dozen)""", RegexOption.IGNORE_CASE).find(remaining)
+            val qtyMatch = Regex(QTY_UNIT_PATTERN, RegexOption.IGNORE_CASE).find(remaining)
             var qty: Double? = null
             var unit: String? = null
             var name = remaining
@@ -208,7 +230,7 @@ object LocalRuleBasedExtractor {
         }
 
         for (line in lines) {
-            val engLine = BengaliNumberUtils.toEnglishDigits(line)
+            val engLine = stripGroupedCommas(BengaliNumberUtils.toEnglishDigits(line))
 
             // Check if line indicates Total / Grand Total / মোট
             val totalMatch = Regex("""(total|subtotal|net|amount|grand total|মোট|সর্বমোট)[:\s]*([0-9]+(\.[0-9]+)?)""", RegexOption.IGNORE_CASE).find(engLine)

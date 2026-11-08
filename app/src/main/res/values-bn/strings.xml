@@ -130,8 +130,8 @@
     <string name="default_household_name">আমার পরিবার</string>
     <string name="monthly_budget_label">মাসিক বাজারের বাজেট (৳)</string>
     <string name="about_bazar_hisab">বাজার হিসাব সম্পর্কে</string>
-    <string name="privacy_heading">সম্পূর্ণ নিরাপদ ও অফলাইন</string>
-    <string name="privacy_body">আপনার খরচের সকল তথ্য আপনার ফোনেই সংরক্ষিত থাকে। ইন্টারনেট ছাড়াও সাধারণ খরচ লেখা ও দেখা যায়।</string>
+    <string name="privacy_heading">গোপনীয়তা ও নিরাপত্তা</string>
+    <string name="privacy_body">আপনার খরচের সকল তথ্য আপনার ফোনেই সংরক্ষিত থাকে। AI ব্যবহার করলে রশিদের ছবি বা কথার লেখা Firebase-এর মাধ্যমে Google Gemini-তে পাঠানো হয়। অ্যাপে কোনো API key সংরক্ষিত থাকে না।</string>
     <string name="currency_bdt">মুদ্রা: বাংলাদেশী টাকা (৳)</string>
-    <string name="ai_notice">কৃত্রিম বুদ্ধিমত্তা (AI) শুধুমাত্র প্রাথমিক ড্রাফট তৈরি করে। চূড়ান্তভাবে সংরক্ষণের দায়িত্ব আপনার।</string>
+    <string name="ai_notice">কৃত্রিম বুদ্ধিমত্তা (AI) শুধুমাত্র প্রাথমিক ড্রাফট তৈরি করে। চূড়ান্তভাবে সংরক্ষণের দায়িত্ব আপনার। AI না থাকলে ডিভাইসেই হিসাব করা হয় এবং তা জানিয়ে দেওয়া হয়।</string>
 </resources>

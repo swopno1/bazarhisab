@@ -84,6 +84,8 @@ fun ReconciliationScreen(
 ) {
     val state by viewModel.reconciliationState.collectAsState()
     val settings by viewModel.settings.collectAsState()
+    val isSaving by viewModel.isSaving.collectAsState()
+    val saveErrorMessage by viewModel.saveErrorMessage.collectAsState()
     val isBengali = settings?.language != "en"
 
     var editingItemIndex by remember { mutableStateOf<Int?>(null) }
@@ -141,6 +143,14 @@ fun ReconciliationScreen(
                             fontWeight = FontWeight.ExtraBold,
                             color = MaterialTheme.colorScheme.primary
                         )
+                        if (saveErrorMessage != null) {
+                            Text(
+                                text = saveErrorMessage!!,
+                                color = MaterialTheme.colorScheme.error,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
                     }
 
                     Button(
@@ -157,6 +167,7 @@ fun ReconciliationScreen(
                                 onExpenseSaved()
                             }
                         },
+                        enabled = !isSaving,
                         shape = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primary

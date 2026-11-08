@@ -34,7 +34,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.DocumentScanner
 import androidx.compose.material.icons.filled.PhotoLibrary
@@ -90,6 +89,7 @@ fun ReceiptScanScreen(
 
     val context = LocalContext.current
     val isAiProcessing by viewModel.isAiProcessing.collectAsState()
+    val aiErrorMessage by viewModel.aiErrorMessage.collectAsState()
     val settings by viewModel.settings.collectAsState()
     val isBengali = settings?.language != "en"
 
@@ -299,6 +299,27 @@ fun ReceiptScanScreen(
                 }
             }
 
+            // AI / OCR failure is shown here instead of navigating to a
+            // placeholder draft. The user stays on this screen and can retry
+            // or enter the expense manually.
+            if (aiErrorMessage != null) {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    ),
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = aiErrorMessage!!,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(14.dp)
+                    )
+                }
+            }
+
             // Action Buttons
             Column(
                 modifier = Modifier.fillMaxWidth(),
@@ -371,40 +392,9 @@ fun ReceiptScanScreen(
                     )
                 }
 
-                // Sample Demo Receipt Button for instant evaluation
-                Surface(
-                    onClick = {
-                        val demoBitmap = Bitmap.createBitmap(400, 600, Bitmap.Config.ARGB_8888)
-                        viewModel.processReceiptImage(demoBitmap) {
-                            onNavigateToReconciliation()
-                        }
-                    },
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.12f),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("demo_receipt_button")
-                ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.AutoAwesome,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.secondary,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = if (isBengali) "ডেমো রশিদ দিয়ে পরখ করুন" else "Try Sample Receipt",
-                            color = MaterialTheme.colorScheme.secondary,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp
-                        )
-                    }
-                }
+                // NOTE: the former "Try Sample Receipt" demo button was removed
+                // here (P0 fix): it fed a blank bitmap into the scanner, which
+                // deterministically produced the fabricated ৳1,160 receipt.
             }
         }
     }

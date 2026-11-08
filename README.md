@@ -30,7 +30,7 @@ A simple, offline-first Android expense tracker built with modern Jetpack Compos
 * **UI Framework:** Jetpack Compose with Material Design 3 (M3)
 * **Architecture Pattern:** Model-View-ViewModel (MVVM) + Unidirectional Data Flow (UDF)
 * **Local Persistence:** Room Database (SQLite) + Coroutine Flows
-* **Natural Language Processing:** Hybrid On-Device NLP (`LocalRuleBasedExtractor`) + Multimodal Gemini REST Service
+* **Natural Language Processing:** Hybrid On-Device NLP (`LocalRuleBasedExtractor`) + Firebase AI Logic (Gemini 2.5 Flash, App Check protected — no API key in the app)
 * **Networking & Image Loading:** Retrofit 2, OkHttp 3, Coil
 * **Monetization:** Google Mobile Ads SDK (`play-services-ads:23.6.0`)
 * **Testing:** JUnit 4 + Robolectric local JVM testing
@@ -96,7 +96,9 @@ gradle :app:bundleRelease
 ## 🔒 Configuration & Privacy
 
 * **AdMob Configuration:** Configured in `app/src/main/java/com/example/ads/AdConfig.kt` and `app/src/main/AndroidManifest.xml`.
-* **API Keys & Secrets:** Sensitive credentials, API keys, and keystores are never committed to this repository. Optional Gemini API keys are injected securely at build time via `.env` / `BuildConfig`.
+* **Firebase AI Logic (Gemini) &amp; App Check:** No API key is shipped in the app. Gemini is reached through Firebase AI Logic (`com.google.firebase:firebase-ai`, model `gemini-2.5-flash`), attested by App Check (Play Integrity in release, debug provider in debug builds). The founder adds `app/google-services.json` from the Firebase console — see `app/FIREBASE_SETUP.md` for the exact steps. Until then, AI calls fail with a clear "not set up yet" message and the app keeps working offline. The legacy raw-REST Gemini path (`GeminiExpenseAiService`, `.env` / `GEMINI_API_KEY`) is deprecated and no longer wired in — delete it once the P0 branch lands.
+* **API Keys &amp; Secrets:** Sensitive credentials, API keys, and keystores are never committed to this repository.
+* **Data sent to Google when AI is used:** a receipt photo (resized to max 1024 px) or voice/shopping-list text is sent to Google Gemini through Firebase so it can be read. Expense records themselves stay in the on-device Room database; nothing is uploaded except the content of the single AI request you trigger.
 
 ---
 

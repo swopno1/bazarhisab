@@ -122,8 +122,12 @@ dependencies {
   // implementation(libs.androidx.credentials)
   // implementation(libs.androidx.credentials.play.services)
   // implementation(libs.googleid)
-  implementation(libs.firebase.appcheck.recaptcha)
-  implementation(libs.firebase.appcheck.debug)
+  // App Check: Play Integrity attests release builds. The reCAPTCHA provider
+  // is not used — Play Integrity is the provider for this Play Store app.
+  implementation(libs.firebase.appcheck.playintegrity)
+  // Debug provider is debug-only: it must never be compiled into releases.
+  // (Debug builds install it via src/debug/.../AppCheckInitializer.kt.)
+  debugImplementation(libs.firebase.appcheck.debug)
   implementation(libs.kotlinx.coroutines.android)
   implementation(libs.kotlinx.coroutines.core)
   implementation(libs.logging.interceptor)
@@ -148,4 +152,21 @@ dependencies {
   debugImplementation(libs.androidx.compose.ui.tooling)
   "ksp"(libs.androidx.room.compiler)
   "ksp"(libs.moshi.kotlin.codegen)
+}
+
+// Firebase AI Logic requires app/google-services.json, which the founder adds
+// from the Firebase console and never commits (see app/FIREBASE_SETUP.md).
+// Fail release builds early with a helpful message instead of a cryptic
+// google-services failure. Debug builds are exempt so the app can still run
+// offline without Firebase configured.
+tasks.named("preReleaseBuild") {
+  doFirst {
+    val configFile = file("google-services.json")
+    check(configFile.exists()) {
+      "Missing app/google-services.json. Follow app/FIREBASE_SETUP.md: create/use a " +
+        "Firebase project, add the Android app com.vivescriptsolutions.bazarhisab, " +
+        "download google-services.json into app/, then rebuild. " +
+        "AI features stay unavailable until then."
+    }
+  }
 }

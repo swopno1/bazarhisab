@@ -139,7 +139,7 @@
     <string name="monthly_budget_label">Monthly Grocery Budget (৳)</string>
     <string name="about_bazar_hisab">About Bazar Hisab</string>
     <string name="privacy_heading">Privacy &amp; Offline First</string>
-    <string name="privacy_body">All your expense records are stored locally on your device. Receipt images are processed securely for extraction and not retained without your choice.</string>
+    <string name="privacy_body">All your expense records are stored locally on your device. If you use AI extraction, the receipt photo or spoken text is sent to Google Gemini through Firebase so it can be read — no API key is stored in the app.</string>
     <string name="currency_bdt">Currency: Bangladeshi Taka (৳)</string>
-    <string name="ai_notice">AI extraction operates as a draft assistant. You always review and approve before saving.</string>
+    <string name="ai_notice">AI extraction operates as a draft assistant. You always review and approve before saving. When AI is unavailable, entries are parsed on-device and labelled as such.</string>
 </resources>
