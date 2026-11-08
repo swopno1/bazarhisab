@@ -8,7 +8,7 @@ import com.example.ai.BengaliNumberUtils
 import com.example.ai.ExpenseAiService
 import com.example.ai.ExtractedExpense
 import com.example.ai.ExtractedItem
-import com.example.ai.GeminiExpenseAiService
+import com.example.ai.FirebaseAiExpenseService
 import com.example.data.db.AppDatabase
 import com.example.data.model.AppSettingsEntity
 import com.example.data.model.ExpenseEntity
@@ -68,7 +68,11 @@ data class HomeUiState(
 class ExpenseViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository: ExpenseRepository
-    private val aiService: ExpenseAiService = GeminiExpenseAiService()
+    // AI via Firebase AI Logic (Gemini) with App Check — no API key is
+    // embedded in the app. The legacy GeminiExpenseAiService (raw REST with
+    // a BuildConfig key) is no longer wired in; delete it (and the `.env` /
+    // GEMINI_API_KEY plumbing) once the P0 branch lands.
+    private val aiService: ExpenseAiService = FirebaseAiExpenseService(application)
 
     val allExpenses: StateFlow<List<ExpenseWithItems>>
     val shoppingItems: StateFlow<List<ShoppingListItemEntity>>
@@ -180,6 +184,10 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
                 _aiErrorMessage.value = it.message
                     ?: "Could not understand that. Please try again or type it."
                 return@launch
+            }
+            if (extracted.aiOfflineFallback) {
+                _aiErrorMessage.value =
+                    "AI unavailable — parsed on-device. Please check the amounts before saving."
             }
             loadDraftFromExtracted(extracted, source = "VOICE")
             onReady()
@@ -399,10 +407,15 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
     fun pasteAndParseShoppingList(rawText: String) {
         viewModelScope.launch {
             _isAiProcessing.value = true
+            _aiErrorMessage.value = null
             val parsed = aiService.parseShoppingList(rawText).getOrElse {
                 emptyList()
             }
             _isAiProcessing.value = false
+            if (parsed.any { it.aiOfflineFallback }) {
+                _aiErrorMessage.value =
+                    "AI unavailable — list parsed on-device. Please check quantities and prices."
+            }
 
             val entities = parsed.map {
                 ShoppingListItemEntity(

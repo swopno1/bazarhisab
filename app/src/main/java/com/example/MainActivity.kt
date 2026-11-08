@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
+import com.example.ai.FirebaseSetup
 import com.example.ui.ExpenseViewModel
 import com.example.ui.MainAppScreen
 import com.example.ui.theme.MyApplicationTheme
@@ -21,6 +22,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // Initialise Firebase + App Check before any Firebase SDK is used.
+        // Safe when Firebase isn't configured yet (see app/FIREBASE_SETUP.md):
+        // AI stays unavailable, the rest of the app keeps working offline.
+        FirebaseSetup.initialize(this)
         com.example.ads.AdManager.initialize(this)
         setContent {
             CompositionLocalProvider(

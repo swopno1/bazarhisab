@@ -15,7 +15,13 @@ data class ExtractedExpense(
     val category: String? = null,
     val paymentMethod: String? = "cash",
     val notes: String? = null,
-    val confidence: Float = 0.9f
+    val confidence: Float = 0.9f,
+    /**
+     * True when this result came from the labelled on-device fallback
+     * (AI unavailable) rather than Gemini. The UI surfaces this instead
+     * of pretending AI answered. Never set by the Gemini path.
+     */
+    val aiOfflineFallback: Boolean = false,
 )
 
 @JsonClass(generateAdapter = true)
@@ -26,5 +32,7 @@ data class ExtractedItem(
     val unitPrice: Double? = null,
     val amount: Double? = null,
     val category: String? = null,
-    val confidence: Float = 0.9f
+    val confidence: Float = 0.9f,
+    /** True when this item came from the labelled on-device fallback (AI unavailable). */
+    val aiOfflineFallback: Boolean = false,
 )
