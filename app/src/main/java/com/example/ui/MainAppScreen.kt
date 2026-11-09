@@ -236,6 +236,10 @@ fun MainAppScreen(
                         onNavigateToReconciliation = {
                             previousScreen = Screen.SCAN
                             currentScreen = Screen.RECONCILIATION
+                        },
+                        onNavigateToManual = {
+                            previousScreen = Screen.SCAN
+                            currentScreen = Screen.MANUAL
                         }
                     )
 

@@ -97,10 +97,10 @@
     <!-- Shopping List -->
     <string name="shopping_title">Shopping List</string>
     <string name="new_list_item">Add item (e.g. চাল ৫ কেজি ৪৫০)</string>
-    <string name="paste_list">Paste Raw Text</string>
+    <string name="paste_list">Paste Full List</string>
     <string name="paste_list_hint">Paste multiple lines (e.g. Rice 5kg 450 \n Potato 2kg 100)</string>
-    <string name="parse_list_button">Parse with AI</string>
-    <string name="convert_to_expense">Convert to Expense</string>
+    <string name="parse_list_button">Make My List</string>
+    <string name="convert_to_expense">Save as Expense</string>
     <string name="clear_completed">Clear Completed</string>
     <string name="items_completed_count">%1$d of %2$d items checked</string>
     <string name="no_shopping_items">Your shopping list is empty. Add items above!</string>

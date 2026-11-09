@@ -295,6 +295,70 @@ fun VoiceEntryScreen(
                 )
             )
         },
+        // Pinned action bar: the "make list" button stays visible so the
+        // user never has to hunt for it by scrolling.
+        bottomBar = {
+            Surface(
+                color = MaterialTheme.colorScheme.surface,
+                shadowElevation = 8.dp,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // AI failure is shown here instead of navigating to a
+                    // placeholder draft; the user stays and can retry or edit.
+                    if (aiErrorMessage != null) {
+                        Text(
+                            text = aiErrorMessage!!,
+                            color = MaterialTheme.colorScheme.error,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    Button(
+                        onClick = {
+                            if (spokenText.isNotBlank()) {
+                                viewModel.processVoiceText(spokenText) {
+                                    onNavigateToReconciliation()
+                                }
+                            }
+                        },
+                        enabled = spokenText.isNotBlank() && !isAiProcessing,
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(54.dp)
+                            .testTag("process_voice_button")
+                    ) {
+                        if (isAiProcessing) {
+                            CircularProgressIndicator(
+                                color = Color.White,
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(if (isBengali) "হিসাব তৈরি হচ্ছে..." else "Processing with AI...")
+                        } else {
+                            Icon(imageVector = Icons.Default.AutoAwesome, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = stringResource(R.string.process_with_ai),
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+        },
         modifier = modifier
     ) { innerPadding ->
         Column(
@@ -434,56 +498,7 @@ fun VoiceEntryScreen(
                 }
             }
 
-            // AI failure is shown here instead of navigating to a
-            // placeholder draft; the user stays and can retry or edit.
-            if (aiErrorMessage != null) {
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = aiErrorMessage!!,
-                    color = MaterialTheme.colorScheme.error,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-
-            // Bottom CTA: Extract Expense Items
-            Button(
-                onClick = {
-                    if (spokenText.isNotBlank()) {
-                        viewModel.processVoiceText(spokenText) {
-                            onNavigateToReconciliation()
-                        }
-                    }
-                },
-                enabled = spokenText.isNotBlank() && !isAiProcessing,
-                shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(54.dp)
-                    .testTag("process_voice_button")
-            ) {
-                if (isAiProcessing) {
-                    CircularProgressIndicator(
-                        color = Color.White,
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(if (isBengali) "হিসাব তৈরি হচ্ছে..." else "Processing with AI...")
-                } else {
-                    Icon(imageVector = Icons.Default.AutoAwesome, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = stringResource(R.string.process_with_ai),
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
+            Spacer(modifier = Modifier.height(8.dp))
         }
     }
 }

@@ -37,6 +37,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.DocumentScanner
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material3.Button
@@ -86,6 +87,7 @@ fun ReceiptScanScreen(
     viewModel: ExpenseViewModel,
     onNavigateBack: () -> Unit,
     onNavigateToReconciliation: () -> Unit,
+    onNavigateToManual: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     BackHandler { onNavigateBack() }
@@ -295,7 +297,7 @@ fun ReceiptScanScreen(
                             }
                             Spacer(modifier = Modifier.height(14.dp))
                             Text(
-                                text = if (isBengali) "রশিদটি ক্যামেরার সামনে সোজা রাখুন" else "Hold receipt flat in good light",
+                                text = if (isBengali) "রশিদটি ক্যামেরার সামনে সোজা রাখুন" else "Hold the receipt straight in good light",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 textAlign = TextAlign.Center,
@@ -304,9 +306,9 @@ fun ReceiptScanScreen(
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
                                 text = if (isBengali)
-                                    "সুপারশপ রশিদ, মেমো বা হাতে লেখা তালিকা — অন-ডিভাইস OCR দ্বারা স্বয়ংক্রিয় হিসাব বের হবে"
+                                    "দোকানের রশিদ বা বাজারের মেমোর ছবি তুলুন — জিনিসের নাম আর দাম নিজে নিজে বসে যাবে"
                                 else
-                                    "Super shop receipt, grocery memo, or handwritten list — fast on-device OCR extraction",
+                                    "Take a photo of the shop receipt — items and prices will fill in by themselves",
                                 style = MaterialTheme.typography.bodySmall,
                                 textAlign = TextAlign.Center,
                                 color = MaterialTheme.colorScheme.outline
@@ -353,13 +355,39 @@ fun ReceiptScanScreen(
                     shape = RoundedCornerShape(14.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(
-                        text = aiErrorMessage!!,
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(14.dp)
-                    )
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(
+                            text = aiErrorMessage!!,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                        // Escape hatch: when the photo cannot be read
+                        // (e.g. handwritten Bengali memo), go type it by hand.
+                        OutlinedButton(
+                            onClick = onNavigateToManual,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("receipt_error_manual_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = stringResource(R.string.manual_entry),
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
                 }
             }
 
@@ -389,7 +417,29 @@ fun ReceiptScanScreen(
                     )
                 }
 
-                // Google Lens / Visual Search Action
+                // Gallery Photo Picker (second: most users already have a memo photo)
+                OutlinedButton(
+                    onClick = {
+                        galleryLauncher.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                        )
+                    },
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp)
+                        .testTag("pick_gallery_button")
+                ) {
+                    Icon(imageVector = Icons.Default.PhotoLibrary, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = stringResource(R.string.or_pick_gallery),
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                // Google Lens / Visual Search Action (last: leaves the app)
                 OutlinedButton(
                     onClick = {
                         ReceiptOcrScanner.openGoogleLens(context, null)
@@ -408,28 +458,6 @@ fun ReceiptScanScreen(
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = if (isBengali) "গুগল লেন্স দিয়ে স্ক্যান করুন" else stringResource(R.string.scan_with_lens),
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-
-                // Gallery Photo Picker
-                OutlinedButton(
-                    onClick = {
-                        galleryLauncher.launch(
-                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                        )
-                    },
-                    shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp)
-                        .testTag("pick_gallery_button")
-                ) {
-                    Icon(imageVector = Icons.Default.PhotoLibrary, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = stringResource(R.string.or_pick_gallery),
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Medium
                     )

@@ -3,11 +3,11 @@ package com.example.ui.home
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -63,6 +63,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.R
@@ -136,17 +137,18 @@ fun HomeScreen(
                     }
                 }
 
-                // Quick Language Toggle
+                // Quick Language Toggle (48dp target: easy to tap, hard to hit by accident)
                 Surface(
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    shape = RoundedCornerShape(20.dp),
-                    modifier = Modifier.clickable {
+                    onClick = {
                         val nextLang = if (isBengali) "en" else "bn"
                         viewModel.updateSettings(language = nextLang)
-                    }
+                    },
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier.defaultMinSize(minWidth = 72.dp, minHeight = 48.dp)
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
@@ -503,10 +505,11 @@ fun QuickEntryCard(
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = title,
-                fontSize = 12.sp,
+                fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = color,
-                maxLines = 1
+                maxLines = 2,
+                textAlign = TextAlign.Center
             )
         }
     }

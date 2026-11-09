@@ -99,8 +99,8 @@
     <string name="new_list_item">পণ্য লিখুন (যেমন: চাল ৫ কেজি ৪৫০)</string>
     <string name="paste_list">একসাথে পেস্ট করুন</string>
     <string name="paste_list_hint">একাধিক লাইন পেস্ট করুন (যেমন:\nচাল ৫ কেজি ৪৫০\nআলু ২ কেজি ১০০)</string>
-    <string name="parse_list_button">AI দিয়ে ফর্দ সাজান</string>
-    <string name="convert_to_expense">খরচে রূপান্তর করুন</string>
+    <string name="parse_list_button">ফর্দ সাজিয়ে নিন</string>
+    <string name="convert_to_expense">খরচের খাতায় তুলুন</string>
     <string name="clear_completed">কেনা তালিকা মুছুন</string>
     <string name="items_completed_count">%2$d টির মধ্যে %1$d টি কেনা শেষ</string>
     <string name="no_shopping_items">বাজারের ফর্দ খালি আছে। উপরের ঘরে নতুন পণ্য যোগ করুন!</string>
