@@ -1,5 +1,6 @@
 package com.example.ui.settings
 
+import android.app.Activity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -263,6 +264,155 @@ fun SettingsScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outline
                     )
+                }
+            }
+
+            // Firebase Cloud Sync & Google Account Card
+            val context = androidx.compose.ui.platform.LocalContext.current
+            val scope = androidx.compose.runtime.rememberCoroutineScope()
+            val firebaseUser by viewModel.syncManager.currentUser.collectAsState()
+            val isSyncing by viewModel.syncManager.isSyncing.collectAsState()
+            val syncMessage by viewModel.syncManager.syncMessage.collectAsState()
+            var authErrorMessage by remember { mutableStateOf<String?>(null) }
+
+            Card(
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.AutoAwesome,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (isBengali) "ফায়ারবেস ক্লাউড সিঙ্ক ও ব্যাকআপ" else "Firebase Cloud Sync & Backup",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = if (isBengali)
+                            "গুগল দিয়ে সাইন ইন করে আপনার খরচের হিসাব ক্লাউড ফায়ারস্টোরে ব্যাকআপ রাখুন।"
+                        else
+                            "Sign in with Google to backup and sync your expenses safely to Firebase Firestore.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    if (firebaseUser != null) {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = if (isBengali) "কানেক্টেড: ${firebaseUser?.displayName ?: firebaseUser?.email ?: "গুগল অ্যাকাউন্ট"}" else "Connected: ${firebaseUser?.displayName ?: firebaseUser?.email ?: "Google Account"}",
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 14.sp,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                }
+                                Text(
+                                    text = "Firebase Project: workroster-498716",
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.outline,
+                                    modifier = Modifier.padding(top = 2.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Button(
+                                onClick = { viewModel.syncManager.syncWithCloud(scope) },
+                                enabled = !isSyncing,
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("sync_cloud_button")
+                            ) {
+                                if (isSyncing) {
+                                    androidx.compose.material3.CircularProgressIndicator(
+                                        modifier = Modifier.size(18.dp),
+                                        color = MaterialTheme.colorScheme.onPrimary,
+                                        strokeWidth = 2.dp
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                }
+                                Text(if (isBengali) "এখনই সিঙ্ক করুন" else "Sync Now")
+                            }
+
+                            androidx.compose.material3.OutlinedButton(
+                                onClick = { viewModel.syncManager.signOut(scope) },
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.testTag("sign_out_button")
+                            ) {
+                                Text(if (isBengali) "লগআউট" else "Sign Out")
+                            }
+                        }
+                    } else {
+                        Button(
+                            onClick = {
+                                authErrorMessage = null
+                                (context as? Activity)?.let { act ->
+                                    viewModel.syncManager.signInWithGoogle(
+                                        activity = act,
+                                        scope = scope,
+                                        onSuccess = { authErrorMessage = null },
+                                        onError = { authErrorMessage = it }
+                                    )
+                                }
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("google_signin_button")
+                        ) {
+                            Text(if (isBengali) "গুগল অ্যাকাউন্ট দিয়ে সাইন ইন করুন" else "Sign in with Google")
+                        }
+                    }
+
+                    if (authErrorMessage != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = authErrorMessage!!,
+                            color = MaterialTheme.colorScheme.error,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+
+                    if (syncMessage != null) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = syncMessage!!,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
             }
 

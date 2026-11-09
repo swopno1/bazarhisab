@@ -1,21 +1,16 @@
 package com.example.ai
 
 import android.graphics.Bitmap
-import android.util.Base64
 import android.util.Log
-import com.example.BuildConfig
+import com.google.firebase.Firebase
+import com.google.firebase.ai.ai
+import com.google.firebase.ai.type.content
+import com.google.firebase.ai.type.generationConfig
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
-import org.json.JSONArray
-import org.json.JSONObject
-import java.io.ByteArrayOutputStream
-import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.withTimeout
 
 class GeminiExpenseAiService : ExpenseAiService {
 
@@ -23,25 +18,19 @@ class GeminiExpenseAiService : ExpenseAiService {
         .addLast(KotlinJsonAdapterFactory())
         .build()
 
-    private val okHttpClient = OkHttpClient.Builder()
-        .connectTimeout(45, TimeUnit.SECONDS)
-        .readTimeout(45, TimeUnit.SECONDS)
-        .writeTimeout(45, TimeUnit.SECONDS)
-        .build()
+    private val primaryModel = "gemini-3.8-flash"
 
-    private val apiKey: String
-        get() = try {
-            BuildConfig.GEMINI_API_KEY
-        } catch (e: Throwable) {
-            ""
-        }
-
-    private val primaryModel = "gemini-2.5-flash"
+    private val generativeModel by lazy {
+        Firebase.ai.generativeModel(
+            modelName = primaryModel,
+            generationConfig = generationConfig {
+                responseMimeType = "application/json"
+            }
+        )
+    }
 
     override suspend fun extractFromReceipt(bitmap: Bitmap): Result<ExtractedExpense> = withContext(Dispatchers.IO) {
-        // Step 1: Run fast on-device ML Kit OCR directly on the image.
-        // An OCR failure is surfaced (not swallowed as empty text): it only
-        // falls through to Gemini vision when a real key is configured.
+        // Step 1: Run fast on-device ML Kit OCR directly on the image
         val ocrResult = ReceiptOcrScanner.recognizeText(bitmap)
         val ocrError = ocrResult.exceptionOrNull()
         val ocrText = ocrResult.getOrDefault("")
@@ -49,37 +38,14 @@ class GeminiExpenseAiService : ExpenseAiService {
         if (ocrText.isNotBlank()) {
             val parsedFromOcr = LocalRuleBasedExtractor.parseReceiptText(ocrText)
             if (parsedFromOcr.items.isNotEmpty() && parsedFromOcr.items.any { it.amount != null || it.quantity != null }) {
-                Log.d("GeminiAi", "Extracted ${parsedFromOcr.items.size} items from receipt using on-device OCR")
+                Log.d("GeminiExpenseAi", "Extracted ${parsedFromOcr.items.size} items from receipt using on-device OCR")
                 return@withContext Result.success(parsedFromOcr)
             }
         }
 
-        val key = apiKey
-        if (key.isBlank() || key.contains("MY_GEMINI_API_KEY")) {
-            // No Gemini key is configured, so there is no vision fallback.
-            // Never invent receipt items: if OCR produced no priced items,
-            // report the failure so the UI can tell the user instead of
-            // saving a fabricated receipt as a real expense.
-            if (ocrText.isNotBlank()) {
-                val parsed = LocalRuleBasedExtractor.parseReceiptText(ocrText)
-                if (parsed.items.any { it.amount != null } || (parsed.total ?: 0.0) > 0.0) {
-                    return@withContext Result.success(parsed)
-                }
-            }
-            val reason = ocrError?.message
-                ?: "No readable text or prices were found on this receipt."
-            return@withContext Result.failure(
-                Exception("Could not read this receipt. $reason Please type the items manually.")
-            )
-        }
-
-        if (ocrError != null) {
-            Log.w("GeminiExpenseAi", "On-device OCR failed, trying Gemini vision", ocrError)
-        }
-
+        // Step 2: Fall back to Firebase AI Logic Gemini vision model
         try {
             val resized = resizeBitmap(bitmap, 1024)
-            val base64Image = bitmapToBase64(resized)
 
             val prompt = """
                 You are an expert Bangladeshi household expense extraction engine.
@@ -115,56 +81,35 @@ class GeminiExpenseAiService : ExpenseAiService {
                 }
             """.trimIndent()
 
-            val requestJson = JSONObject().apply {
-                val contents = JSONArray().apply {
-                    val contentObj = JSONObject().apply {
-                        val parts = JSONArray().apply {
-                            put(JSONObject().put("text", prompt))
-                            put(JSONObject().put("inlineData", JSONObject().apply {
-                                put("mimeType", "image/jpeg")
-                                put("data", base64Image)
-                            }))
-                        }
-                        put("parts", parts)
+            val response = withTimeout(60_000L) {
+                generativeModel.generateContent(
+                    content {
+                        image(resized)
+                        text(prompt)
                     }
-                    put(contentObj)
-                }
-                put("contents", contents)
-                put("generationConfig", JSONObject().apply {
-                    put("responseMimeType", "application/json")
-                    put("temperature", 0.1)
-                })
+                )
             }
 
-            val url = "https://generativelanguage.googleapis.com/v1beta/models/$primaryModel:generateContent?key=$key"
-            val request = Request.Builder()
-                .url(url)
-                .post(requestJson.toString().toRequestBody("application/json".toMediaType()))
-                .build()
-
-            val response = okHttpClient.newCall(request).execute()
-            val responseBody = response.body?.string() ?: ""
-
-            if (!response.isSuccessful) {
-                Log.w("GeminiExpenseAi", "Gemini HTTP error ${response.code}: $responseBody")
-                return@withContext Result.failure(Exception("Gemini returned code ${response.code}"))
-            }
-
-            val text = extractTextFromGeminiResponse(responseBody)
+            val text = response.text ?: ""
             val extracted = parseExtractedJson(text)
             Result.success(extracted)
         } catch (e: Exception) {
-            Log.e("GeminiExpenseAi", "Error processing receipt: ${e.message}", e)
-            Result.failure(e)
+            Log.e("GeminiExpenseAi", "Firebase AI Logic receipt extraction failed: ${e.message}", e)
+            if (ocrText.isNotBlank()) {
+                val parsed = LocalRuleBasedExtractor.parseReceiptText(ocrText)
+                if (parsed.items.any { it.amount != null } || (parsed.total ?: 0.0) > 0.0) {
+                    return@withContext Result.success(parsed)
+                }
+            }
+            val reason = ocrError?.message ?: e.localizedMessage
+                ?: "No readable text or prices were found on this receipt."
+            Result.failure(
+                Exception("Could not read this receipt. $reason Please type the items manually.")
+            )
         }
     }
 
     override suspend fun extractFromVoiceText(text: String): Result<ExtractedExpense> = withContext(Dispatchers.IO) {
-        val key = apiKey
-        if (key.isBlank() || key.contains("MY_GEMINI_API_KEY")) {
-            return@withContext Result.success(LocalRuleBasedExtractor.parseVoice(text))
-        }
-
         try {
             val prompt = """
                 You are an expense extraction assistant for Bangladeshi households.
@@ -192,52 +137,21 @@ class GeminiExpenseAiService : ExpenseAiService {
                 }
             """.trimIndent()
 
-            val requestJson = JSONObject().apply {
-                val contents = JSONArray().apply {
-                    val contentObj = JSONObject().apply {
-                        val parts = JSONArray().apply {
-                            put(JSONObject().put("text", prompt))
-                        }
-                        put("parts", parts)
-                    }
-                    put(contentObj)
-                }
-                put("contents", contents)
-                put("generationConfig", JSONObject().apply {
-                    put("responseMimeType", "application/json")
-                    put("temperature", 0.1)
-                })
+            val response = withTimeout(30_000L) {
+                generativeModel.generateContent(prompt)
             }
 
-            val url = "https://generativelanguage.googleapis.com/v1beta/models/$primaryModel:generateContent?key=$key"
-            val request = Request.Builder()
-                .url(url)
-                .post(requestJson.toString().toRequestBody("application/json".toMediaType()))
-                .build()
-
-            val response = okHttpClient.newCall(request).execute()
-            val responseBody = response.body?.string() ?: ""
-
-            if (!response.isSuccessful) {
-                // Fall back to local parser
-                return@withContext Result.success(LocalRuleBasedExtractor.parseVoice(text))
-            }
-
-            val jsonText = extractTextFromGeminiResponse(responseBody)
+            val jsonText = response.text ?: ""
             val extracted = parseExtractedJson(jsonText)
             Result.success(extracted)
         } catch (e: Exception) {
-            // Graceful fallback to rule-based parser on any network or parsing issue
+            // Graceful fallback to local rule-based extractor
+            Log.w("GeminiExpenseAi", "Voice extraction fallback to rule-based: ${e.message}")
             Result.success(LocalRuleBasedExtractor.parseVoice(text))
         }
     }
 
     override suspend fun parseShoppingList(text: String): Result<List<ExtractedItem>> = withContext(Dispatchers.IO) {
-        val key = apiKey
-        if (key.isBlank() || key.contains("MY_GEMINI_API_KEY")) {
-            return@withContext Result.success(LocalRuleBasedExtractor.parseShoppingList(text))
-        }
-
         try {
             val prompt = """
                 Extract grocery shopping list items from this text:
@@ -256,53 +170,18 @@ class GeminiExpenseAiService : ExpenseAiService {
                 ]
             """.trimIndent()
 
-            val requestJson = JSONObject().apply {
-                val contents = JSONArray().apply {
-                    val contentObj = JSONObject().apply {
-                        val parts = JSONArray().apply {
-                            put(JSONObject().put("text", prompt))
-                        }
-                        put("parts", parts)
-                    }
-                    put(contentObj)
-                }
-                put("contents", contents)
-                put("generationConfig", JSONObject().apply {
-                    put("responseMimeType", "application/json")
-                    put("temperature", 0.1)
-                })
+            val response = withTimeout(30_000L) {
+                generativeModel.generateContent(prompt)
             }
 
-            val url = "https://generativelanguage.googleapis.com/v1beta/models/$primaryModel:generateContent?key=$key"
-            val request = Request.Builder()
-                .url(url)
-                .post(requestJson.toString().toRequestBody("application/json".toMediaType()))
-                .build()
-
-            val response = okHttpClient.newCall(request).execute()
-            val responseBody = response.body?.string() ?: ""
-
-            if (!response.isSuccessful) {
-                return@withContext Result.success(LocalRuleBasedExtractor.parseShoppingList(text))
-            }
-
-            val jsonText = extractTextFromGeminiResponse(responseBody)
+            val jsonText = response.text ?: ""
             val adapter = moshi.adapter(Array<ExtractedItem>::class.java)
             val items = adapter.fromJson(jsonText)?.toList() ?: LocalRuleBasedExtractor.parseShoppingList(text)
             Result.success(items)
         } catch (e: Exception) {
+            Log.w("GeminiExpenseAi", "Shopping list parsing fallback: ${e.message}")
             Result.success(LocalRuleBasedExtractor.parseShoppingList(text))
         }
-    }
-
-    private fun extractTextFromGeminiResponse(jsonString: String): String {
-        val json = JSONObject(jsonString)
-        val candidates = json.optJSONArray("candidates") ?: return "{}"
-        val firstCandidate = candidates.optJSONObject(0) ?: return "{}"
-        val content = firstCandidate.optJSONObject("content") ?: return "{}"
-        val parts = content.optJSONArray("parts") ?: return "{}"
-        val firstPart = parts.optJSONObject(0) ?: return "{}"
-        return firstPart.optString("text", "{}")
     }
 
     private fun parseExtractedJson(jsonText: String): ExtractedExpense {
@@ -330,11 +209,5 @@ class GeminiExpenseAiService : ExpenseAiService {
             newWidth = (maxDimension * ratio).toInt()
         }
         return Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
-    }
-
-    private fun bitmapToBase64(bitmap: Bitmap): String {
-        val stream = ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 85, stream)
-        return Base64.encodeToString(stream.toByteArray(), Base64.NO_WRAP)
     }
 }

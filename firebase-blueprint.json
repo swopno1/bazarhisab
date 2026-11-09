@@ -1,0 +1,68 @@
+{
+  "entities": {
+    "UserProfile": {
+      "collection": "users",
+      "path": "users/{userId}",
+      "fields": {
+        "userId": { "type": "string", "description": "The Firebase Auth UID of the user." },
+        "language": { "type": "string", "description": "Preferred language (bn/en)." },
+        "currency": { "type": "string", "description": "Currency symbol or code (BDT)." },
+        "monthlyBudget": { "type": "number", "description": "Monthly grocery budget." },
+        "updatedAt": { "type": "timestamp", "description": "Last update timestamp." }
+      },
+      "required": ["userId", "language", "currency", "monthlyBudget", "updatedAt"]
+    },
+    "Expense": {
+      "collection": "expenses",
+      "path": "users/{userId}/expenses/{expenseId}",
+      "fields": {
+        "userId": { "type": "string", "description": "Owner UID." },
+        "title": { "type": "string", "description": "Expense title." },
+        "totalAmount": { "type": "number", "description": "Total amount in BDT." },
+        "currency": { "type": "string", "description": "Currency code." },
+        "date": { "type": "number", "description": "Expense timestamp in epoch millis." },
+        "merchant": { "type": "string", "description": "Merchant or shop name.", "optional": true },
+        "categoryId": { "type": "string", "description": "Expense category." },
+        "paymentMethod": { "type": "string", "description": "Payment method (cash, bKash, etc.)." },
+        "source": { "type": "string", "description": "Source (MANUAL, VOICE, RECEIPT)." },
+        "note": { "type": "string", "description": "Additional notes.", "optional": true },
+        "imageUri": { "type": "string", "description": "Receipt image URI.", "optional": true },
+        "createdAt": { "type": "timestamp", "description": "Creation timestamp." },
+        "updatedAt": { "type": "timestamp", "description": "Update timestamp." }
+      },
+      "required": ["userId", "title", "totalAmount", "currency", "date", "categoryId", "paymentMethod", "source", "createdAt", "updatedAt"]
+    },
+    "ExpenseItem": {
+      "collection": "items",
+      "path": "users/{userId}/expenses/{expenseId}/items/{itemId}",
+      "fields": {
+        "expenseId": { "type": "string", "description": "Parent expense ID." },
+        "userId": { "type": "string", "description": "Owner UID." },
+        "name": { "type": "string", "description": "Item name." },
+        "quantity": { "type": "number", "description": "Quantity.", "optional": true },
+        "unit": { "type": "string", "description": "Unit (kg, liter, pcs).", "optional": true },
+        "unitPrice": { "type": "number", "description": "Price per unit.", "optional": true },
+        "amount": { "type": "number", "description": "Line total amount." },
+        "categoryId": { "type": "string", "description": "Category ID." },
+        "confidence": { "type": "number", "description": "AI extraction confidence." },
+        "createdAt": { "type": "timestamp", "description": "Creation timestamp." }
+      },
+      "required": ["expenseId", "userId", "name", "amount", "categoryId", "confidence", "createdAt"]
+    },
+    "ShoppingItem": {
+      "collection": "shopping_items",
+      "path": "users/{userId}/shopping_items/{itemId}",
+      "fields": {
+        "userId": { "type": "string", "description": "Owner UID." },
+        "name": { "type": "string", "description": "Item name." },
+        "quantity": { "type": "number", "description": "Quantity.", "optional": true },
+        "unit": { "type": "string", "description": "Unit.", "optional": true },
+        "estimatedPrice": { "type": "number", "description": "Estimated price.", "optional": true },
+        "categoryId": { "type": "string", "description": "Category ID." },
+        "isPurchased": { "type": "boolean", "description": "Purchase status." },
+        "createdAt": { "type": "timestamp", "description": "Creation timestamp." }
+      },
+      "required": ["userId", "name", "categoryId", "isPurchased", "createdAt"]
+    }
+  }
+}

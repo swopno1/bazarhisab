@@ -103,6 +103,8 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         _saveErrorMessage.value = null
     }
 
+    val syncManager = com.example.firebase.FirebaseSyncManager(application)
+
     init {
         val db = AppDatabase.getDatabase(application)
         repository = ExpenseRepository(db.expenseDao(), db.shoppingListDao(), db.settingsDao())
@@ -115,6 +117,8 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
 
         settings = repository.settings
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+        syncManager.attemptSilentSignIn(viewModelScope)
     }
 
     val homeUiState: StateFlow<HomeUiState> = combine(
@@ -369,6 +373,9 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
                 }
 
                 repository.insertExpense(expense, items)
+                if (syncManager.currentUser.value != null) {
+                    syncManager.syncWithCloud(viewModelScope)
+                }
                 // Clear the draft so a second save / back-navigation cannot
                 // re-insert the same expense.
                 _reconciliationState.value = ReconciliationState()
