@@ -119,9 +119,17 @@
     <string name="filter_today">আজ</string>
     <string name="filter_week">এই সপ্তাহ</string>
     <string name="filter_month">এই মাস</string>
+    <string name="filter_year">বছর</string>
     <string name="total_spent">মোট খরচ: %s</string>
     <string name="export_csv">CSV ফাইলে এক্সপোর্ট</string>
     <string name="monthly_summary_title">মাসিক খরচের খাতওয়ারি বিবরণ</string>
+    <string name="no_expenses_period">এই সময়ের জন্য কোনো খরচ রেকর্ড করা হয়নি।</string>
+    <string name="scan_with_lens">Google Lens দিয়ে স্ক্যান করুন</string>
+    <string name="scan_with_lens_hint">Google Lens ভিজ্যুয়াল ইন্টেলিজেন্স ব্যবহার করুন</string>
+    <string name="voice_mic_tap">বলতে মাইক্রোফোনে ট্যাপ করুন</string>
+    <string name="voice_not_supported">এই ডিভাইসে ভয়েস শনাক্তকরণ পরিষেবা উপলব্ধ নয়। আপনি টাইপ করতে পারেন বা নমুনা বেছে নিতে পারেন।</string>
+    <string name="camera_permission_toast">রসিদের ছবি তুলতে ক্যামেরার অনুমতি প্রয়োজন।</string>
+    <string name="mic_permission_toast">ভয়েস ইনপুটের জন্য মাইক্রোফোনের অনুমতি প্রয়োজন।</string>
 
     <!-- Settings -->
     <string name="settings_title">সেটিংস</string>
@@ -130,8 +138,8 @@
     <string name="default_household_name">আমার পরিবার</string>
     <string name="monthly_budget_label">মাসিক বাজারের বাজেট (৳)</string>
     <string name="about_bazar_hisab">বাজার হিসাব সম্পর্কে</string>
-    <string name="privacy_heading">সম্পূর্ণ নিরাপদ ও অফলাইন</string>
-    <string name="privacy_body">আপনার খরচের সকল তথ্য আপনার ফোনেই সংরক্ষিত থাকে। ইন্টারনেট ছাড়াও সাধারণ খরচ লেখা ও দেখা যায়।</string>
+    <string name="privacy_heading">গোপনীয়তা ও লোকাল ফার্স্ট</string>
+    <string name="privacy_body">আপনার খরচের হিসাব সাধারণত আপনার ফোনেই থাকে। রসিদ প্রথমে ফোনেই পড়া হয়; শুধু পড়তে না পারা ছবি ও ভয়েস লেখা নির্যাসের জন্য Google AI-এর কাছে পাঠানো হয়। সাইন ইন করলে আপনার রেকর্ড আপনার ব্যক্তিগত Firebase ক্লাউডে ব্যাকআপ হয়, এবং অ্যাপে Google বিজ্ঞাপন দেখানো হয়।</string>
     <string name="currency_bdt">মুদ্রা: বাংলাদেশী টাকা (৳)</string>
     <string name="ai_notice">কৃত্রিম বুদ্ধিমত্তা (AI) শুধুমাত্র প্রাথমিক ড্রাফট তৈরি করে। চূড়ান্তভাবে সংরক্ষণের দায়িত্ব আপনার।</string>
 </resources>

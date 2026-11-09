@@ -35,7 +35,7 @@ fun AdmobBanner(
     adUnitId: String = AdConfig.bannerAdUnitId,
     isBengali: Boolean = false
 ) {
-    if (!AdConfig.adsEnabled) return
+    if (!AdConfig.adsEnabled || !AdManager.canShowAds) return
 
     val isPreview = LocalInspectionMode.current
     var isAdLoaded by remember { mutableStateOf(false) }

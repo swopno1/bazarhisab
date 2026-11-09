@@ -21,6 +21,7 @@ import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential.Co
 import com.google.firebase.Firebase
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.auth
@@ -37,12 +38,37 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 
 private const val TAG = "FirebaseSync"
 
+/**
+ * Resolves the Google Sign-In web client ID generated from
+ * google-services.json, or null when the file is absent (e.g. a fresh
+ * checkout before Firebase setup). Uses getIdentifier instead of an R
+ * reference so the app still compiles without google-services.json.
+ */
+internal fun resolveWebClientId(context: Context): String? {
+    val resId = context.resources.getIdentifier(
+        "default_web_client_id", "string", context.packageName
+    )
+    if (resId == 0) return null
+    return context.getString(resId).takeIf { it.isNotBlank() }
+}
+
 class FirebaseSyncManager(private val context: Context) {
 
-    private val auth: FirebaseAuth = Firebase.auth
+    /**
+     * Null when FirebaseApp is not initialized (no google-services.json):
+     * every member below degrades to a no-op or a clear error instead of
+     * crashing, so the app stays fully usable offline without Firebase.
+     */
+    private val auth: FirebaseAuth? = try {
+        Firebase.auth
+    } catch (e: IllegalStateException) {
+        Log.w(TAG, "FirebaseApp not initialized; cloud features disabled")
+        null
+    }
 
     private val db: FirebaseFirestore by lazy {
         val dbId = context.getString(R.string.firestore_database_id)
@@ -51,7 +77,7 @@ class FirebaseSyncManager(private val context: Context) {
 
     private val credentialManager = CredentialManager.create(context)
 
-    private val _currentUser = MutableStateFlow<FirebaseUser?>(auth.currentUser)
+    private val _currentUser = MutableStateFlow(auth?.currentUser)
     val currentUser: StateFlow<FirebaseUser?> = _currentUser.asStateFlow()
 
     private val _isSyncing = MutableStateFlow(false)
@@ -61,7 +87,7 @@ class FirebaseSyncManager(private val context: Context) {
     val syncMessage: StateFlow<String?> = _syncMessage.asStateFlow()
 
     init {
-        auth.addAuthStateListener { firebaseAuth ->
+        auth?.addAuthStateListener { firebaseAuth ->
             _currentUser.value = firebaseAuth.currentUser
         }
     }
@@ -72,9 +98,13 @@ class FirebaseSyncManager(private val context: Context) {
         onSuccess: () -> Unit,
         onError: (String) -> Unit
     ) {
-        val clientId = try {
-            context.getString(R.string.default_web_client_id)
-        } catch (e: Exception) {
+        val firebaseAuth = auth
+        if (firebaseAuth == null) {
+            onError("Google Sign-In unavailable: Firebase is not configured")
+            return
+        }
+        val clientId = resolveWebClientId(context)
+        if (clientId == null) {
             onError("Google Sign-In configuration missing: default_web_client_id")
             return
         }
@@ -89,8 +119,8 @@ class FirebaseSyncManager(private val context: Context) {
                 if (credential is CustomCredential && credential.type == TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
                     val googleIdToken = GoogleIdTokenCredential.createFrom(credential.data).idToken
                     val authCredential = GoogleAuthProvider.getCredential(googleIdToken, null)
-                    auth.signInWithCredential(authCredential).await()
-                    _currentUser.value = auth.currentUser
+                    firebaseAuth.signInWithCredential(authCredential).await()
+                    _currentUser.value = firebaseAuth.currentUser
                     onSuccess()
                     // Trigger sync automatically upon successful sign in
                     syncWithCloud(scope)
@@ -107,13 +137,10 @@ class FirebaseSyncManager(private val context: Context) {
     }
 
     fun attemptSilentSignIn(scope: CoroutineScope) {
-        if (auth.currentUser != null) return
+        val firebaseAuth = auth ?: return
+        if (firebaseAuth.currentUser != null) return
 
-        val clientId = try {
-            context.getString(R.string.default_web_client_id)
-        } catch (e: Exception) {
-            return
-        }
+        val clientId = resolveWebClientId(context) ?: return
 
         val googleIdOption = GetGoogleIdOption.Builder()
             .setFilterByAuthorizedAccounts(true)
@@ -130,8 +157,8 @@ class FirebaseSyncManager(private val context: Context) {
                 if (credential is CustomCredential && credential.type == TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
                     val googleIdToken = GoogleIdTokenCredential.createFrom(credential.data).idToken
                     val authCredential = GoogleAuthProvider.getCredential(googleIdToken, null)
-                    auth.signInWithCredential(authCredential).await()
-                    _currentUser.value = auth.currentUser
+                    firebaseAuth.signInWithCredential(authCredential).await()
+                    _currentUser.value = firebaseAuth.currentUser
                 }
             } catch (e: Exception) {
                 // Expected when user hasn't authorized account previously
@@ -144,11 +171,15 @@ class FirebaseSyncManager(private val context: Context) {
         scope.launch {
             withContext(NonCancellable) {
                 try {
-                    credentialManager.clearCredentialState(ClearCredentialStateRequest())
+                    // Bounded: sign-out must complete even if the credential
+                    // service stalls; the local sign-out below always runs.
+                    withTimeout(10_000) {
+                        credentialManager.clearCredentialState(ClearCredentialStateRequest())
+                    }
                 } catch (e: Exception) {
                     Log.w(TAG, "Failed to clear credential state: ${e.message}")
                 } finally {
-                    auth.signOut()
+                    auth?.signOut()
                     _currentUser.value = null
                     onComplete()
                 }
@@ -156,8 +187,61 @@ class FirebaseSyncManager(private val context: Context) {
         }
     }
 
+    /**
+     * Permanently deletes the user's Firebase account and every cloud
+     * document under users/{uid} (expenses incl. nested items, shopping
+     * items). Local on-device records are kept: sign-in is framed as
+     * backup & sync, so deleting the backup must not destroy the phone's
+     * own history. Fails with a clear message when Firebase requires a
+     * recent login before deletion.
+     */
+    fun deleteAccount(scope: CoroutineScope, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        val user = auth?.currentUser
+        if (user == null) {
+            onError("No signed-in account to delete")
+            return
+        }
+        scope.launch {
+            try {
+                val uid = user.uid
+                val userDoc = db.collection("users").document(uid)
+                for (collection in listOf("expenses", "shopping_items")) {
+                    val snapshot = userDoc.collection(collection).get().await()
+                    for (doc in snapshot.documents) {
+                        if (collection == "expenses") {
+                            val items = doc.reference.collection("items").get().await()
+                            for (sub in items.documents) {
+                                sub.reference.delete().await()
+                            }
+                        }
+                        doc.reference.delete().await()
+                    }
+                }
+                userDoc.delete().await()
+                user.delete().await()
+                try {
+                    withTimeout(10_000) {
+                        credentialManager.clearCredentialState(ClearCredentialStateRequest())
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to clear credential state: ${e.message}")
+                } finally {
+                    auth?.signOut()
+                    _currentUser.value = null
+                }
+                onSuccess()
+            } catch (e: FirebaseAuthRecentLoginRequiredException) {
+                Log.w(TAG, "Account deletion needs a recent login", e)
+                onError("For security, sign out and sign in again, then retry deleting your account")
+            } catch (e: Exception) {
+                Log.e(TAG, "Account deletion failed", e)
+                onError(e.localizedMessage ?: "Account deletion failed")
+            }
+        }
+    }
+
     fun syncWithCloud(scope: CoroutineScope) {
-        val user = auth.currentUser ?: return
+        val user = auth?.currentUser ?: return
         if (_isSyncing.value) return
 
         scope.launch(Dispatchers.IO) {

@@ -239,7 +239,10 @@ fun ReconciliationScreen(
             // Duplicate Detection Banner (Section 20)
             if (state.duplicateWarningExpense != null) {
                 item {
-                    val dupDate = SimpleDateFormat("dd MMMM", Locale.getDefault()).format(Date(state.duplicateWarningExpense!!.date))
+                    val dupMillis = state.duplicateWarningExpense!!.date
+                    val dupDate = remember(dupMillis) {
+                        SimpleDateFormat("dd MMMM", Locale.getDefault()).format(Date(dupMillis))
+                    }
                     Card(
                         colors = CardDefaults.cardColors(containerColor = Color(0xFFFBE9E7)),
                         border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(Color(0xFFFF7043))),
@@ -498,6 +501,24 @@ fun ItemReconciliationCard(
     }
 }
 
+/**
+ * Validation result for the item editor's amount field. Blank means "no
+ * price yet" (kept as null, resolved later via quantity x unitPrice or
+ * rejected at save when the total is 0) — never silently coerced to 0.
+ */
+internal sealed interface EditedAmount {
+    data class Value(val amount: Double) : EditedAmount
+    data object Blank : EditedAmount
+    data object Invalid : EditedAmount
+}
+
+internal fun validateEditedAmount(input: String): EditedAmount {
+    if (input.isBlank()) return EditedAmount.Blank
+    val parsed = BengaliNumberUtils.parseAmountStrict(input) ?: return EditedAmount.Invalid
+    if (parsed <= 0) return EditedAmount.Invalid
+    return EditedAmount.Value(parsed)
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ItemEditorBottomSheet(
@@ -512,6 +533,7 @@ fun ItemEditorBottomSheet(
     var quantityStr by remember { mutableStateOf(initialItem?.quantity?.toString() ?: "") }
     var unit by remember { mutableStateOf(initialItem?.unit ?: "") }
     var amountStr by remember { mutableStateOf(initialItem?.amount?.toString() ?: "") }
+    var amountError by remember { mutableStateOf<String?>(null) }
     var selectedCategory by remember { mutableStateOf(initialItem?.category ?: "groceries") }
 
     ModalBottomSheet(
@@ -566,9 +588,14 @@ fun ItemEditorBottomSheet(
 
             OutlinedTextField(
                 value = amountStr,
-                onValueChange = { amountStr = it },
+                onValueChange = {
+                    amountStr = it
+                    amountError = null
+                },
                 label = { Text(stringResource(R.string.item_amount)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                isError = amountError != null,
+                supportingText = amountError?.let { { Text(it) } },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp)
             )
@@ -591,18 +618,31 @@ fun ItemEditorBottomSheet(
                 }
                 Button(
                     onClick = {
-                        val parsedAmount = BengaliNumberUtils.parseAmount(amountStr)
-                        val parsedQty = BengaliNumberUtils.parseAmount(quantityStr)
-                        onSave(
-                            ExtractedItem(
-                                name = name.ifBlank { "পণ্য" },
-                                quantity = parsedQty,
-                                unit = unit.ifBlank { null },
-                                amount = parsedAmount ?: 0.0,
-                                category = selectedCategory,
-                                confidence = 1.0f
-                            )
-                        )
+                        when (val validated = validateEditedAmount(amountStr)) {
+                            is EditedAmount.Invalid -> {
+                                amountError = if (isBengali) {
+                                    "সঠিক দাম লিখুন (০ টাকার বেশি হতে হবে)"
+                                } else {
+                                    "Enter a valid price greater than ৳0"
+                                }
+                                return@Button
+                            }
+                            else -> {
+                                val parsedQty = BengaliNumberUtils.parseAmountStrict(quantityStr)
+                                    ?.takeIf { it > 0 }
+                                onSave(
+                                    ExtractedItem(
+                                        name = name.ifBlank { "পণ্য" },
+                                        quantity = parsedQty,
+                                        unit = unit.ifBlank { null },
+                                        unitPrice = initialItem?.unitPrice,
+                                        amount = (validated as? EditedAmount.Value)?.amount,
+                                        category = selectedCategory,
+                                        confidence = 1.0f
+                                    )
+                                )
+                            }
+                        }
                     },
                     modifier = Modifier.weight(1.5f),
                     shape = RoundedCornerShape(12.dp)

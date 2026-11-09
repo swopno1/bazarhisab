@@ -10,9 +10,6 @@ import com.google.android.gms.ads.LoadAdError
 import com.google.android.gms.ads.MobileAds
 import com.google.android.gms.ads.interstitial.InterstitialAd
 import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 
 object AdManager {
     private const val TAG = "AdManager"
@@ -22,26 +19,33 @@ object AdManager {
     private var actionCounter = 0
     private const val ACTIONS_BETWEEN_INTERSTITIALS = 3 // Throttled to avoid overwhelming the user
 
-    fun initialize(context: Context) {
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val configuration = com.google.android.gms.ads.RequestConfiguration.Builder()
-                    .setTestDeviceIds(listOf(AdRequest.DEVICE_ID_EMULATOR))
-                    .build()
-                MobileAds.setRequestConfiguration(configuration)
+    /**
+     * True once Mobile Ads is initialized with consent clearance. Banners
+     * and interstitials stay fully hidden until then (e.g. EEA users who
+     * decline consent never see ad slots).
+     */
+    var canShowAds: Boolean = false
+        private set
 
-                MobileAds.initialize(context) { status ->
-                    Log.d(TAG, "AdMob MobileAds initialized successfully: $status")
-                }
-                loadInterstitial(context)
-            } catch (e: Throwable) {
-                Log.w(TAG, "Notice during MobileAds initialization: ${e.message}")
+    fun initialize(context: Context) {
+        try {
+            val configuration = com.google.android.gms.ads.RequestConfiguration.Builder()
+                .setTestDeviceIds(listOf(AdRequest.DEVICE_ID_EMULATOR))
+                .build()
+            MobileAds.setRequestConfiguration(configuration)
+
+            MobileAds.initialize(context) { status ->
+                Log.d(TAG, "AdMob MobileAds initialized successfully: $status")
             }
+            canShowAds = true
+            loadInterstitial(context)
+        } catch (e: Throwable) {
+            Log.w(TAG, "Notice during MobileAds initialization: ${e.message}")
         }
     }
 
     fun loadInterstitial(context: Context) {
-        if (!AdConfig.adsEnabled || interstitialAd != null || isAdLoading) return
+        if (!AdConfig.adsEnabled || !canShowAds || interstitialAd != null || isAdLoading) return
 
         isAdLoading = true
         val adRequest = AdRequest.Builder().build()
@@ -69,7 +73,7 @@ object AdManager {
      * Show interstitial ad when appropriate (e.g. after saving an expense), throttled.
      */
     fun showInterstitialIfReady(activity: Activity, onAdClosed: () -> Unit = {}) {
-        if (!AdConfig.adsEnabled) {
+        if (!AdConfig.adsEnabled || !canShowAds) {
             onAdClosed()
             return
         }

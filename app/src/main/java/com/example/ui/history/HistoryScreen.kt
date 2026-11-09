@@ -514,7 +514,7 @@ fun HistoryScreen(
 
                             categoryTotals.take(4).forEach { (catId, catAmount) ->
                                 val category = ExpenseCategories.getCategory(catId)
-                                val ratio = if (totalSpent > 0) (catAmount / totalSpent).toFloat() else 0f
+                                val ratio = categoryShare(catAmount, totalSpent)
                                 Column(modifier = Modifier.padding(vertical = 4.dp)) {
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
@@ -615,16 +615,31 @@ fun HistoryScreen(
     }
 }
 
-private fun generateCsvForExpenses(expenses: List<ExpenseWithItems>): String {
+/** Category share of total spend as a 0..1 fraction; 0 when nothing spent. */
+internal fun categoryShare(catAmount: Double, totalSpent: Double): Float {
+    return if (totalSpent > 0) (catAmount / totalSpent).toFloat() else 0f
+}
+
+/** CSV-escape a field: embedded quotes are doubled per RFC 4180. */
+internal fun csvField(raw: String): String = "\"" + raw.replace("\"", "\"\"") + "\""
+
+/** Money for CSV export: fixed 2 decimals, dot separator, no grouping. */
+internal fun csvAmount(amount: Double): String = String.format(Locale.US, "%.2f", amount)
+
+internal fun generateCsvForExpenses(expenses: List<ExpenseWithItems>): String {
     val sb = StringBuilder()
     sb.append("ID,Date,Merchant,TotalAmount,Currency,Category,PaymentMethod,Items\n")
     val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US)
     for (item in expenses) {
         val e = item.expense
         val itemsStr = item.items.joinToString(";") {
-            "${it.name} (${it.quantity ?: ""} ${it.unit ?: ""}: ${it.amount})"
-        }.replace("\"", "'")
-        sb.append("${e.id},\"${dateFormat.format(Date(e.date))}\",\"${e.merchant ?: ""}\",${e.totalAmount},${e.currency},${e.categoryId},${e.paymentMethod},\"$itemsStr\"\n")
+            "${it.name} (${it.quantity ?: ""} ${it.unit ?: ""}: ${csvAmount(it.amount)})"
+        }
+        sb.append(
+            "${e.id},${csvField(dateFormat.format(Date(e.date)))}," +
+                "${csvField(e.merchant ?: "")},${csvAmount(e.totalAmount)}," +
+                "${e.currency},${e.categoryId},${e.paymentMethod},${csvField(itemsStr)}\n"
+        )
     }
     return sb.toString()
 }

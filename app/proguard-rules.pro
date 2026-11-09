@@ -1,7 +1,6 @@
 # Preserve line numbers and source file names for crash deobfuscation
 -keepattributes SourceFile,LineNumberTable,Signature,InnerClasses,EnclosingMethod,*Annotation*
 -renamesourcefileattribute SourceFile
--printmapping mapping.txt
 
 # Disable multi-pass optimization loops to prevent 504 Gateway Time-out during bundling,
 # while keeping R8 code shrinking and symbol obfuscation fully active.
@@ -28,16 +27,6 @@
 -dontwarn com.squareup.moshi.**
 -keep class com.example.ai.AiModelsKt** { *; }
 -keep class com.example.ai.** { *; }
-
-# ====================================================================
-# Retrofit & OkHttp
-# ====================================================================
--keep class retrofit2.** { *; }
--keepclasseswithmembers class * {
-    @retrofit2.http.* <methods>;
-}
--dontwarn retrofit2.**
--dontwarn okhttp3.**
 
 # ====================================================================
 # Google Mobile Ads (AdMob)
@@ -78,8 +67,7 @@
 }
 
 # ====================================================================
-# CameraX & Coil
+# Coil
 # ====================================================================
--dontwarn androidx.camera.**
 -dontwarn coil.**
 

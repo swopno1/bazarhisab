@@ -33,7 +33,7 @@ interface ExpenseDao {
     @Query("SELECT SUM(totalAmount) FROM expenses WHERE date >= :startOfMonth")
     fun getMonthTotal(startOfMonth: Long): Flow<Double?>
 
-    @Query("SELECT * FROM expenses WHERE merchant IS NOT NULL AND merchant = :merchant AND totalAmount = :amount AND date BETWEEN :startTime AND :endTime LIMIT 1")
+    @Query("SELECT * FROM expenses WHERE merchant IS NOT NULL AND merchant = :merchant AND ABS(totalAmount - :amount) < 0.01 AND date BETWEEN :startTime AND :endTime LIMIT 1")
     suspend fun findPotentialDuplicate(merchant: String?, amount: Double, startTime: Long, endTime: Long): ExpenseEntity?
 
     @Transaction

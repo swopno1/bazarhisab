@@ -7,6 +7,7 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -76,6 +77,8 @@ import androidx.core.content.ContextCompat
 import com.example.R
 import com.example.ai.ReceiptOcrScanner
 import com.example.ui.ExpenseViewModel
+import com.example.ui.components.PermissionPermanentlyDeniedDialog
+import com.example.ui.components.PermissionRationaleDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -95,6 +98,9 @@ fun ReceiptScanScreen(
 
     var selectedImageModel by remember { mutableStateOf<Any?>(null) }
     val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val hostActivity = LocalActivity.current
+    var showCameraRationale by remember { mutableStateOf(false) }
+    var showCameraSettingsPrompt by remember { mutableStateOf(false) }
 
     // Camera capture launcher
     val cameraLauncher = rememberLauncherForActivityResult(
@@ -114,6 +120,9 @@ fun ReceiptScanScreen(
     ) { isGranted ->
         if (isGranted) {
             cameraLauncher.launch(null)
+        } else if (hostActivity?.shouldShowRequestPermissionRationale(Manifest.permission.CAMERA) == false) {
+            // Permanently denied ("Don't ask again"): only Settings can help.
+            showCameraSettingsPrompt = true
         } else {
             Toast.makeText(
                 context,
@@ -132,9 +141,43 @@ fun ReceiptScanScreen(
 
         if (hasPermission) {
             cameraLauncher.launch(null)
+        } else if (hostActivity?.shouldShowRequestPermissionRationale(Manifest.permission.CAMERA) == true) {
+            showCameraRationale = true
         } else {
             cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
         }
+    }
+
+    if (showCameraRationale) {
+        PermissionRationaleDialog(
+            title = if (isBengali) "ক্যামেরার অনুমতি" else "Camera permission",
+            message = if (isBengali) {
+                "রসিদের ছবি তুলতে ক্যামেরা ব্যবহার করা হয়। ছবি প্রথমে আপনার ফোনেই পড়া হয়।"
+            } else {
+                "The camera photographs receipts for extraction. Images are read on your device first."
+            },
+            confirmLabel = if (isBengali) "অনুমতি দিন" else "Allow",
+            dismissLabel = if (isBengali) "এখন নয়" else "Not now",
+            onConfirm = {
+                showCameraRationale = false
+                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+            },
+            onDismiss = { showCameraRationale = false }
+        )
+    }
+
+    if (showCameraSettingsPrompt) {
+        PermissionPermanentlyDeniedDialog(
+            title = if (isBengali) "ক্যামেরা বন্ধ আছে" else "Camera is blocked",
+            message = if (isBengali) {
+                "রসিদ স্ক্যান করতে সেটিংসে গিয়ে ক্যামেরার অনুমতি চালু করুন।"
+            } else {
+                "To scan receipts, enable the camera permission in Settings."
+            },
+            settingsLabel = if (isBengali) "সেটিংস খুলুন" else "Open Settings",
+            dismissLabel = if (isBengali) "বন্ধ করুন" else "Dismiss",
+            onDismiss = { showCameraSettingsPrompt = false }
+        )
     }
 
     // Photo picker launcher with Coil automatic downsampling & memory management

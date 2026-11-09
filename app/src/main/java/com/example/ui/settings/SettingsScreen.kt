@@ -1,6 +1,6 @@
 package com.example.ui.settings
 
-import android.app.Activity
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -26,16 +26,19 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -73,6 +76,7 @@ fun SettingsScreen(
     var budgetStr by remember(settings?.monthlyBudget) {
         mutableStateOf(settings?.monthlyBudget?.toInt()?.toString() ?: "20000")
     }
+    var budgetError by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
         topBar = {
@@ -211,14 +215,25 @@ fun SettingsScreen(
                         value = budgetStr,
                         onValueChange = {
                             budgetStr = it
-                            val parsed = BengaliNumberUtils.parseAmount(it)
-                            if (parsed != null) {
+                            val parsed = BengaliNumberUtils.parseAmountStrict(it)
+                            if (parsed != null && parsed > 0) {
+                                budgetError = null
                                 viewModel.updateSettings(monthlyBudget = parsed)
+                            } else if (it.isNotBlank()) {
+                                budgetError = if (isBengali) {
+                                    "সঠিক বাজেট লিখুন (০ টাকার বেশি হতে হবে)"
+                                } else {
+                                    "Enter a valid budget greater than ৳0"
+                                }
+                            } else {
+                                budgetError = null
                             }
                         },
                         placeholder = { Text("20000") },
                         prefix = { Text("৳ ", fontWeight = FontWeight.Bold) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        isError = budgetError != null,
+                        supportingText = budgetError?.let { { Text(it) } },
                         modifier = Modifier
                             .fillMaxWidth()
                             .testTag("budget_input"),
@@ -264,16 +279,32 @@ fun SettingsScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outline
                     )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+                    val privacyOptionsActivity = LocalActivity.current
+                    OutlinedButton(
+                        onClick = {
+                            privacyOptionsActivity?.let {
+                                com.example.ads.ConsentManager.showPrivacyOptions(it)
+                            }
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.testTag("ad_privacy_options_button")
+                    ) {
+                        Text(if (isBengali) "বিজ্ঞাপন গোপনীয়তা সেটিংস" else "Ad Privacy Options")
+                    }
                 }
             }
 
             // Firebase Cloud Sync & Google Account Card
-            val context = androidx.compose.ui.platform.LocalContext.current
+            val hostActivity = LocalActivity.current
             val scope = androidx.compose.runtime.rememberCoroutineScope()
             val firebaseUser by viewModel.syncManager.currentUser.collectAsState()
             val isSyncing by viewModel.syncManager.isSyncing.collectAsState()
             val syncMessage by viewModel.syncManager.syncMessage.collectAsState()
             var authErrorMessage by remember { mutableStateOf<String?>(null) }
+            var showDeleteConfirm by remember { mutableStateOf(false) }
+            var isDeletingAccount by remember { mutableStateOf(false) }
 
             Card(
                 shape = RoundedCornerShape(18.dp),
@@ -372,11 +403,24 @@ fun SettingsScreen(
                                 Text(if (isBengali) "লগআউট" else "Sign Out")
                             }
                         }
+
+                        Spacer(modifier = Modifier.height(4.dp))
+                        TextButton(
+                            onClick = { showDeleteConfirm = true },
+                            enabled = !isDeletingAccount,
+                            modifier = Modifier.testTag("delete_account_button")
+                        ) {
+                            Text(
+                                if (isBengali) "অ্যাকাউন্ট ও ক্লাউড ডেটা মুছুন" else "Delete Account & Cloud Data",
+                                color = MaterialTheme.colorScheme.error,
+                                fontSize = 13.sp
+                            )
+                        }
                     } else {
                         Button(
                             onClick = {
                                 authErrorMessage = null
-                                (context as? Activity)?.let { act ->
+                                hostActivity?.let { act ->
                                     viewModel.syncManager.signInWithGoogle(
                                         activity = act,
                                         scope = scope,
@@ -413,6 +457,58 @@ fun SettingsScreen(
                             fontWeight = FontWeight.Medium
                         )
                     }
+
+                    if (showDeleteConfirm) {
+                        AlertDialog(
+                            onDismissRequest = { if (!isDeletingAccount) showDeleteConfirm = false },
+                            title = {
+                                Text(if (isBengali) "অ্যাকাউন্ট মুছে ফেলবেন?" else "Delete your account?")
+                            },
+                            text = {
+                                Text(
+                                    if (isBengali) {
+                                        "আপনার Firebase অ্যাকাউন্ট ও ক্লাউডের সব ব্যাকআপ স্থায়ীভাবে মুছে যাবে। ফোনের হিসাব থেকে যাবে। এই কাজটি ফিরিয়ে আনা যাবে না।"
+                                    } else {
+                                        "Your Firebase account and all cloud backups will be permanently deleted. Records on this phone stay. This cannot be undone."
+                                    }
+                                )
+                            },
+                            confirmButton = {
+                                TextButton(
+                                    onClick = {
+                                        isDeletingAccount = true
+                                        authErrorMessage = null
+                                        viewModel.syncManager.deleteAccount(
+                                            scope = scope,
+                                            onSuccess = {
+                                                isDeletingAccount = false
+                                                showDeleteConfirm = false
+                                            },
+                                            onError = {
+                                                isDeletingAccount = false
+                                                showDeleteConfirm = false
+                                                authErrorMessage = it
+                                            }
+                                        )
+                                    },
+                                    enabled = !isDeletingAccount
+                                ) {
+                                    Text(
+                                        if (isBengali) "হ্যাঁ, মুছে ফেলুন" else "Yes, Delete",
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(
+                                    onClick = { showDeleteConfirm = false },
+                                    enabled = !isDeletingAccount
+                                ) {
+                                    Text(if (isBengali) "বাতিল" else "Cancel")
+                                }
+                            }
+                        )
+                    }
                 }
             }
 
@@ -438,7 +534,7 @@ fun SettingsScreen(
                     }
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "Version 1.0 • Made with care for Bangladeshi households",
+                        text = "Version ${com.example.BuildConfig.VERSION_NAME} • Made with care for Bangladeshi households",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outline
                     )

@@ -16,3 +16,5 @@
 local.properties
 .env
 debug.keystore
+# Firebase config carries project keys: provision per checkout, never commit.
+google-services.json

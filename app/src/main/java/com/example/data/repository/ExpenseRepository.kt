@@ -10,10 +10,7 @@ import com.example.data.model.ExpenseWithItems
 import com.example.data.model.ShoppingListItemEntity
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import java.text.SimpleDateFormat
 import java.util.Calendar
-import java.util.Date
-import java.util.Locale
 
 class ExpenseRepository(
     private val expenseDao: ExpenseDao,
@@ -115,20 +112,5 @@ class ExpenseRepository(
 
     suspend fun updateSettings(settings: AppSettingsEntity) {
         settingsDao.insertOrUpdate(settings)
-    }
-
-    fun generateCsv(expenses: List<ExpenseWithItems>): String {
-        val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
-        val sb = StringBuilder()
-        sb.append("ID,Date,Title,Merchant,Category,Amount,Currency,PaymentMethod,Source,Items,Note\n")
-        for (item in expenses) {
-            val exp = item.expense
-            val itemsSummary = item.items.joinToString(";") {
-                "${it.name} (${it.quantity ?: ""} ${it.unit ?: ""}: ${it.amount})"
-            }.replace(",", " ").replace("\"", "'")
-            val dateStr = dateFormat.format(Date(exp.date))
-            sb.append("${exp.id},\"$dateStr\",\"${exp.title}\",\"${exp.merchant ?: ""}\",\"${exp.categoryId}\",${exp.totalAmount},${exp.currency},\"${exp.paymentMethod}\",\"${exp.source}\",\"$itemsSummary\",\"${exp.note ?: ""}\"\n")
-        }
-        return sb.toString()
     }
 }

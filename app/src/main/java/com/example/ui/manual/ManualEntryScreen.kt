@@ -109,7 +109,7 @@ fun ManualEntryScreen(
             ) {
                 Button(
                     onClick = {
-                        val parsedAmount = BengaliNumberUtils.parseAmount(amountStr)
+                        val parsedAmount = BengaliNumberUtils.parseAmountStrict(amountStr)
                         if (parsedAmount != null && parsedAmount > 0) {
                             amountError = null
                             viewModel.prepareManualDraft(

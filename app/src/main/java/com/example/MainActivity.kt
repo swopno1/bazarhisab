@@ -22,7 +22,12 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         com.example.firebase.configureAppCheck(this, intent)
         enableEdgeToEdge()
-        com.example.ads.AdManager.initialize(this)
+        // Consent first (EEA/UK): ads init only when ad requests are allowed.
+        com.example.ads.ConsentManager.gatherConsent(this) { canRequestAds ->
+            if (canRequestAds) {
+                com.example.ads.AdManager.initialize(this)
+            }
+        }
         setContent {
             CompositionLocalProvider(
                 LocalActivityResultRegistryOwner provides this

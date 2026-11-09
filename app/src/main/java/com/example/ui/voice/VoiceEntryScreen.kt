@@ -10,6 +10,7 @@ import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.RepeatMode
@@ -75,6 +76,8 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.example.R
 import com.example.ui.ExpenseViewModel
+import com.example.ui.components.PermissionPermanentlyDeniedDialog
+import com.example.ui.components.PermissionRationaleDialog
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -94,6 +97,9 @@ fun VoiceEntryScreen(
 
     var spokenText by remember { mutableStateOf("") }
     var isListening by remember { mutableStateOf(false) }
+    val hostActivity = LocalActivity.current
+    var showMicRationale by remember { mutableStateOf(false) }
+    var showMicSettingsPrompt by remember { mutableStateOf(false) }
 
     // Fallback inline SpeechRecognizer
     val speechRecognizer = remember {
@@ -192,6 +198,9 @@ fun VoiceEntryScreen(
     ) { isGranted ->
         if (isGranted) {
             startVoiceRecognition()
+        } else if (hostActivity?.shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO) == false) {
+            // Permanently denied ("Don't ask again"): only Settings can help.
+            showMicSettingsPrompt = true
         } else {
             Toast.makeText(
                 context,
@@ -214,10 +223,44 @@ fun VoiceEntryScreen(
 
             if (hasPermission) {
                 startVoiceRecognition()
+            } else if (hostActivity?.shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO) == true) {
+                showMicRationale = true
             } else {
                 micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
             }
         }
+    }
+
+    if (showMicRationale) {
+        PermissionRationaleDialog(
+            title = if (isBengali) "মাইক্রোফোনের অনুমতি" else "Microphone permission",
+            message = if (isBengali) {
+                "খরচের বিবরণ মুখে বলতে মাইক্রোফোন ব্যবহার করা হয়। রেকর্ডিং শুধু লেখায় রূপান্তরের জন্য ব্যবহৃত হয়।"
+            } else {
+                "The microphone captures your spoken expenses for transcription only."
+            },
+            confirmLabel = if (isBengali) "অনুমতি দিন" else "Allow",
+            dismissLabel = if (isBengali) "এখন নয়" else "Not now",
+            onConfirm = {
+                showMicRationale = false
+                micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+            },
+            onDismiss = { showMicRationale = false }
+        )
+    }
+
+    if (showMicSettingsPrompt) {
+        PermissionPermanentlyDeniedDialog(
+            title = if (isBengali) "মাইক্রোফোন বন্ধ আছে" else "Microphone is blocked",
+            message = if (isBengali) {
+                "ভয়েসে খরচ লিখতে সেটিংসে গিয়ে মাইক্রোফোনের অনুমতি চালু করুন।"
+            } else {
+                "To enter expenses by voice, enable the microphone permission in Settings."
+            },
+            settingsLabel = if (isBengali) "সেটিংস খুলুন" else "Open Settings",
+            dismissLabel = if (isBengali) "বন্ধ করুন" else "Dismiss",
+            onDismiss = { showMicSettingsPrompt = false }
+        )
     }
 
     // Pulse animation for recording

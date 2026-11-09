@@ -5,6 +5,7 @@ import com.example.ai.LocalRuleBasedExtractor
 import com.example.data.model.ExpenseCategories
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -24,10 +25,41 @@ class BazarHisabTest {
     @Test
     fun testCurrencyFormatting() {
         val formattedEn = BengaliNumberUtils.formatCurrency(1250.0, isBengali = false)
-        assertEquals("৳ 1,250", formattedEn)
+        assertEquals("৳ 1,250.00", formattedEn)
 
         val formattedBn = BengaliNumberUtils.formatCurrency(1250.0, isBengali = true)
-        assertEquals("৳ ১,২৫০", formattedBn)
+        assertEquals("৳ ১,২৫০.০০", formattedBn)
+    }
+
+    @Test
+    fun testCurrencyPreservesPaisa() {
+        // Paisa must never be silently dropped from displayed amounts.
+        assertEquals("৳ 1,250.50", BengaliNumberUtils.formatCurrency(1250.5, isBengali = false))
+        assertEquals("৳ ১,২৫০.৫০", BengaliNumberUtils.formatCurrency(1250.5, isBengali = true))
+        // Lakh/crore (Indian-style) grouping with decimals.
+        assertEquals("৳ 1,00,000.25", BengaliNumberUtils.formatCurrency(100000.25, isBengali = false))
+        assertEquals("৳ 1,00,00,000.00", BengaliNumberUtils.formatCurrency(10000000.0, isBengali = false))
+        assertEquals("৳ 999.00", BengaliNumberUtils.formatCurrency(999.0, isBengali = false))
+        assertEquals("৳ 0.00", BengaliNumberUtils.formatCurrency(0.0, isBengali = false))
+        assertEquals("৳ -5.50", BengaliNumberUtils.formatCurrency(-5.5, isBengali = false))
+        // HALF_UP rounding on the paisa boundary.
+        assertEquals("৳ 10.13", BengaliNumberUtils.formatCurrency(10.125, isBengali = false))
+        assertEquals("৳ 10.12", BengaliNumberUtils.formatCurrency(10.124, isBengali = false))
+    }
+
+    @Test
+    fun testParseAmountStrict() {
+        assertEquals(1250.0, BengaliNumberUtils.parseAmountStrict("1,250")!!, 0.0)
+        assertEquals(1250.5, BengaliNumberUtils.parseAmountStrict("৳ ১,২৫০.৫০")!!, 0.0)
+        assertEquals(100.0, BengaliNumberUtils.parseAmountStrict("100 টাকা")!!, 0.0)
+        // Signs preserved so the >0 gate can reject negatives.
+        assertEquals(-5.0, BengaliNumberUtils.parseAmountStrict("-5")!!, 0.0)
+        // Trailing garbage rejected instead of truncated.
+        assertNull(BengaliNumberUtils.parseAmountStrict("12ab"))
+        assertNull(BengaliNumberUtils.parseAmountStrict("1-2"))
+        assertNull(BengaliNumberUtils.parseAmountStrict("abc"))
+        assertNull(BengaliNumberUtils.parseAmountStrict(""))
+        assertNull(BengaliNumberUtils.parseAmountStrict(null))
     }
 
     @Test
@@ -132,6 +164,36 @@ class BazarHisabTest {
         val voice = LocalRuleBasedExtractor.parseVoice("চাল ৫ কেজি ১,২৫০ টাকা")
         assertEquals(1250.0, voice.total ?: 0.0, 0.01)
         assertEquals(5.0, voice.items.firstOrNull()?.quantity ?: 0.0, 0.01)
+    }
+
+    @Test
+    fun testBengaliNumberWords() {
+        // Thousands + hundreds + tens/ones compose; larger scales first.
+        assertEquals(
+            1250.0,
+            LocalRuleBasedExtractor.parseBengaliNumberWords("এক হাজার দুইশ পঞ্চাশ") ?: 0.0,
+            0.0
+        )
+        assertEquals(
+            1200.0,
+            LocalRuleBasedExtractor.parseBengaliNumberWords("আজ বাজারে এক হাজার দুইশ টাকা খরচ হয়েছে") ?: 0.0,
+            0.0
+        )
+        // General thousand multipliers and fractional forms.
+        assertEquals(10000.0, LocalRuleBasedExtractor.parseBengaliNumberWords("দশ হাজার") ?: 0.0, 0.0)
+        assertEquals(1500.0, LocalRuleBasedExtractor.parseBengaliNumberWords("দেড় হাজার") ?: 0.0, 0.0)
+        assertEquals(2500.0, LocalRuleBasedExtractor.parseBengaliNumberWords("আড়াই হাজার") ?: 0.0, 0.0)
+        // Hundreds incl. fractional forms.
+        assertEquals(700.0, LocalRuleBasedExtractor.parseBengaliNumberWords("সাতশ টাকা") ?: 0.0, 0.0)
+        assertEquals(150.0, LocalRuleBasedExtractor.parseBengaliNumberWords("দেড়শ") ?: 0.0, 0.0)
+        // Tens/ones, incl. words that share letters with scale words.
+        assertEquals(20.0, LocalRuleBasedExtractor.parseBengaliNumberWords("বিশ টাকা") ?: 0.0, 0.0)
+        assertEquals(30.0, LocalRuleBasedExtractor.parseBengaliNumberWords("ত্রিশ") ?: 0.0, 0.0)
+        assertEquals(10.0, LocalRuleBasedExtractor.parseBengaliNumberWords("দশ টাকা") ?: 0.0, 0.0)
+        // Lakh support.
+        assertEquals(200000.0, LocalRuleBasedExtractor.parseBengaliNumberWords("দুই লাখ") ?: 0.0, 0.0)
+        // No number words, no digits: null (never a fabricated zero).
+        assertNull(LocalRuleBasedExtractor.parseBengaliNumberWords("আজ বাজারে খরচ হয়েছে"))
     }
 
     @Test

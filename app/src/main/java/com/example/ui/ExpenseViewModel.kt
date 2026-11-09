@@ -65,6 +65,37 @@ data class HomeUiState(
         get() = if (monthlyBudget > 0) ((monthTotal / monthlyBudget) * 100).toInt() else 0
 }
 
+/**
+ * Resolve each draft item's amount: an explicit amount wins, otherwise
+ * quantity x unitPrice. Items with no price at all keep a null amount
+ * (they contribute 0 to sums but stay visibly unpriced in the UI).
+ */
+internal fun resolveDraftItemAmounts(items: List<ExtractedItem>): List<ExtractedItem> {
+    return items.map { item ->
+        val derivedAmount = item.amount
+            ?: if (item.quantity != null && item.unitPrice != null) {
+                item.quantity * item.unitPrice
+            } else {
+                null
+            }
+        item.copy(amount = derivedAmount)
+    }
+}
+
+/**
+ * Total precedence at save time (deliberate, shown in the UI via the
+ * mismatch banner): a positive item sum wins because reviewed line items
+ * are the source of truth; the receipt total is used only when the items
+ * add up to nothing (e.g. an unscanned receipt with a known total).
+ */
+internal fun computeFinalAmount(itemSum: Double, receiptTotal: Double?): Double {
+    return when {
+        itemSum > 0 -> itemSum
+        (receiptTotal ?: 0.0) > 0 -> receiptTotal!!
+        else -> itemSum
+    }
+}
+
 class ExpenseViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository: ExpenseRepository
@@ -315,25 +346,9 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
         if (_isSaving.value) return
         val state = _reconciliationState.value
 
-        // Resolve each item's amount: explicit amount wins, otherwise
-        // quantity x unitPrice. Items with no price at all contribute 0.
-        val resolvedItems = state.items.map { item ->
-            val derivedAmount = item.amount
-                ?: if (item.quantity != null && item.unitPrice != null) {
-                    item.quantity * item.unitPrice
-                } else {
-                    null
-                }
-            item.copy(amount = derivedAmount)
-        }
+        val resolvedItems = resolveDraftItemAmounts(state.items)
         val itemSum = resolvedItems.sumOf { it.amount ?: 0.0 }
-        // Prefer the receipt total when the items add up to nothing
-        // (e.g. an unscanned receipt with a known total).
-        val finalAmount = when {
-            itemSum > 0 -> itemSum
-            (state.receiptTotal ?: 0.0) > 0 -> state.receiptTotal!!
-            else -> itemSum
-        }
+        val finalAmount = computeFinalAmount(itemSum, state.receiptTotal)
 
         // Never save a ৳0 (or negative) expense: show an error instead.
         if (finalAmount <= 0) {
@@ -452,9 +467,5 @@ class ExpenseViewModel(application: Application) : AndroidViewModel(application)
             )
             repository.updateSettings(updated)
         }
-    }
-
-    fun getCsvData(): String {
-        return repository.generateCsv(allExpenses.value)
     }
 }

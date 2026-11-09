@@ -138,8 +138,8 @@
     <string name="default_household_name">Our Family</string>
     <string name="monthly_budget_label">Monthly Grocery Budget (৳)</string>
     <string name="about_bazar_hisab">About Bazar Hisab</string>
-    <string name="privacy_heading">Privacy &amp; Offline First</string>
-    <string name="privacy_body">All your expense records are stored locally on your device. Receipt images are processed securely for extraction and not retained without your choice.</string>
+    <string name="privacy_heading">Privacy &amp; Local First</string>
+    <string name="privacy_body">Your expense records stay on your device by default. Receipts are read on-device first; only unreadable images and voice text are sent to Google AI for extraction when you use those features. Signing in backs up your records to your private Firebase cloud space, and the app shows Google ads.</string>
     <string name="currency_bdt">Currency: Bangladeshi Taka (৳)</string>
     <string name="ai_notice">AI extraction operates as a draft assistant. You always review and approve before saving.</string>
 </resources>
