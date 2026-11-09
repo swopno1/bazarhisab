@@ -46,7 +46,9 @@ object ConsentManager {
             },
             { error ->
                 Log.w(TAG, "Consent info update failed: ${error.message}")
-                onComplete(consentInfo.canRequestAds())
+                // Debug builds use demo units only, so a consent outage must
+                // not hide the ad UI under test; release stays gated.
+                onComplete(BuildConfig.DEBUG || consentInfo.canRequestAds())
             }
         )
     }
@@ -67,7 +69,7 @@ object ConsentManager {
             },
             { error ->
                 Log.w(TAG, "Consent form load failed: ${error.message}")
-                onComplete(consentInfo.canRequestAds())
+                onComplete(BuildConfig.DEBUG || consentInfo.canRequestAds())
             }
         )
     }

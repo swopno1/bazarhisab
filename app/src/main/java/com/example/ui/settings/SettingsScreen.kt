@@ -420,6 +420,13 @@ fun SettingsScreen(
                         Button(
                             onClick = {
                                 authErrorMessage = null
+                                if (hostActivity == null) {
+                                    authErrorMessage = if (isBengali) {
+                                        "সাইন-ইন খোলা যাচ্ছে না। অ্যাপটি পুনরায় চালু করুন।"
+                                    } else {
+                                        "Could not open sign-in. Please restart the app."
+                                    }
+                                }
                                 hostActivity?.let { act ->
                                     viewModel.syncManager.signInWithGoogle(
                                         activity = act,
