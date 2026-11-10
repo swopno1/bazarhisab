@@ -7,6 +7,9 @@
 
 A simple, offline-first Android expense tracker built with modern Jetpack Compose, designed specifically for Bangladeshi families and homemakers to record daily grocery and household expenditures effortlessly.
 
+**Package:** `com.vivescriptsolutions.bazarhisab`
+**Google Play:** [Bazar Hisab - Expense Tracker](https://play.google.com/store/apps/details?id=com.vivescriptsolutions.bazarhisab)
+
 ---
 
 ## 🌟 Key Features
