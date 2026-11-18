@@ -5,7 +5,7 @@
 **Application:** Bazar Hisab (`com.vivescriptsolutions.bazarhisab`)  
 **Website:** https://www.vivescriptsolutions.com/  
 **Live version of this policy:** https://www.vivescriptsolutions.com/en/apps/bazarhisab/privacy *(TODO: publish this page before store submission)*  
-**Contact Email:** support@vivescriptsolutions.com
+**Contact Email:** privacy@vivescriptsolutions.com
 
 ---
 
@@ -85,7 +85,7 @@ No other third party receives your data.
 - **Ads:** manage personalization through your Google ad settings and the in-app Ad Privacy Options.
 - Backup copies retained by Google's infrastructure expire per Google's own retention schedules.
 
-To request deletion assistance, email support@vivescriptsolutions.com.
+To request deletion assistance, email privacy@vivescriptsolutions.com.
 
 ---
 
@@ -114,4 +114,4 @@ Material changes will be reflected in an updated effective date in the app listi
 
 **ViveScript Solutions LLC**  
 Website: https://www.vivescriptsolutions.com/  
-Email: support@vivescriptsolutions.com
+Email: privacy@vivescriptsolutions.com
